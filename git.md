@@ -1,8 +1,10 @@
-# 一、克隆git项目
+# 一、git项目创建
 
-1、本地栏目里新建个文件夹例如gitPro
+1、本地创建一个git本地仓库也就是一个文件夹。例如：gitTest(名字自己随意)
 
-2、进入gitPro后打开git bash,在栏目里右击快捷选项git bash here
+2、进入文件夹后右击鼠标，选择Git Bash Here
+
+![githere](E:\gitTest\images\githere.jpg)
 
 3、设置git基础信息,全局变量
 
@@ -12,23 +14,39 @@ git config --global user.email "你的邮箱"
 git config --global user.password "你的密码"
 ```
 
-4、在gitPro文件夹中执行下面命令，完成初始化
+4、初始化
+
+1）如果用户在github创建线上仓库时如果没有初始化就需要使用以下命令初始化
+
+```git
+本地创建git初始化文件README.md，内容是# git仓库名
+echo "# stduyMaterial" >> README.md
+#将本地文件夹初始化成本地仓库
+git init
+#需要先用 git add 命令告诉 Git 开始对这些文件进行跟踪，然后git commit -m '初始化项目版本'提交本地仓库：
+git add README.md
+git commit -m "fist commit"
+#重命名分支，如果newbranch名字分支已经存在，则需要使用-M强制重命名，否则，使用-m进行重命名。
+git branch -M main
+```
+
+2）如果用户在github创建线上仓库时已经初始化
 
 ```git
 git init
+```
+
+5、将本地仓库与远程仓库关联
+
+```git
 git remote add origin <你的项目地址> //注:项目地址形式为:https://gitee.com/xxx/xxx.git或者 git@gitee.com:xxx/xxx.git
 ```
 
-5、将项目克隆到本地
+6、将本地仓库信息更新到远程git(只有远程仓库没有初始化时需要创建时执行此步骤)
 
 ```git
-git clone <项目地址>
-```
-
-6、进入你已经初始化好的或者克隆项目的目录,然后执行：
-
-```git
-git pull origin master
+#更新本地仓库到远程main仓库
+git push -u origin main
 ```
 
 # 二、更新git
@@ -38,10 +56,11 @@ git pull origin master
 2、执行下列命令进行数据更新
 
 ```git
+#对新增或修改文件进行跟踪
 git add .
-
+#提交本地仓库
 git commit -m “安装教程测试”
-
+#将本地仓库文件提交到master仓库
 git push origin master  
 ```
 
