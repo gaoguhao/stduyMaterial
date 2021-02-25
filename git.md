@@ -342,9 +342,12 @@ git remote rm 远程库起的名称(默认是origin)
 
 ##### 3)多仓库关联
 
-```
+```git
 git remote add 远程库起的名称(不能使用默认名origin) 远程库
 git remote add 远程库起的名称(不能使用默认名origin) 远程库
+
+多库关联里首次提交时需使用：
+git push 远程库起的名称 本地分支名:远程分支名
 ```
 
 ##### 4）查看远程库信息
