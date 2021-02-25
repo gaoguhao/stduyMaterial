@@ -326,4 +326,33 @@ git fetch -p
 	然后再用 git tag -l | xargs git tag -d 清理本地仓库。 (此方法楼主已经测试并且可用) 。
 ```
 
-###### 其他命令可参考码云v1.2手册： http://git.mydoc.io/?t=180676
+#### 16、关联
+
+##### 1）添加关联
+
+```git
+git remote add 远程库起的名称(默认是origin) 远程库
+```
+
+##### 2）删除关联
+
+```git
+git remote rm 远程库起的名称(默认是origin)
+```
+
+##### 3)多仓库关联
+
+```
+git remote add 远程库起的名称(不能使用默认名origin) 远程库
+git remote add 远程库起的名称(不能使用默认名origin) 远程库
+```
+
+##### 4）查看远程库信息
+
+```
+git remote -v 
+```
+
+#### 17、其他命令
+
+###### 可参考码云v1.2手册： http://git.mydoc.io/?t=180676
