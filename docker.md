@@ -108,9 +108,11 @@ systemctl enable docker.service
 
 ###### 2）docker容器启动设置
 
-docker run --restart=always -it --name 镜像的名字 （-p 指定端口）镜像名:tag(版本信息)
+docker run --privileged=true --restart=always -it --name 镜像的名字 （-p 指定端口）镜像名:tag(版本信息)
 
 mysql启动：将本地的13306端口配置给镜像的3306
+
+--privileged=true：	让容器内的root有真正的root权限，否则容器内的root只有外部普通用户权限
 
 ```shell
 docker run --restart=always -itd --name mysql-spring -p 13306:3306 -e MYSQL_ROOT_PASSWORD=Ab00859567c! mysql:5.7
@@ -170,7 +172,13 @@ docker search mysql
   5)docker logs 参数 容器id | grep str >> out.txt
   查找日志文件中含有特定字符串的行，并且输出到指定文件out.txt中。
 
-### 11、docker配置mysql
+### 11、docker镜像参数查看
+
+在docker hub	:	https://hub.docker.com/	软件里点击版本tag信息进入版本信息界面查看，如下图点击DIGEST:31985b230b43进入
+
+![image-20210301211927755](E:\gitTest\images\tag版本信息查看.png)
+
+### 12、docker配置mysql
 
 1、安装
 
@@ -201,7 +209,7 @@ mysql -h ip:13306 -uroot -pAb00859567c!
 
 -p 密码
 
-### 12、docker配置tomcat
+### 13、docker配置tomcat
 
 #### 1、tomcat安装
 
@@ -274,4 +282,49 @@ docker run --restart=always -itd -p 8888:8080 -v /data/tomcat/:/usr/local/tomcat
 -p 指定访问主机的`8888`端口映射到`8080`端口。
 
 -v 指定我们容器的`/usr/local/tomcat/webapps/`目录为`/root/tomcat/`主机目录，后续我们要对tomcat进行操作直接在主机这个目录操作即可。
+
+#### 14、redis配置
+
+##### 1、安装docker pull redis
+
+##### 2、redis启动
+
+redis如果不配置redis.conf文件启动时服务器里将不存在redis.conf文件。启动前先从docker hub	:	https://hub.docker.com/	内下载redis从中将redis.conf文件放置到/data/myredis/redis.conf
+
+redis-server /etc/redis/redis.conf	redis 将以 /etc/redis/redis.conf 为配置文件启动
+
+-v /data/myredis/data:/data	容器 /data 映射到宿主机/data/myredis/data
+
+-v /data/myredis/redis.conf:/etc/redis/redis.conf	容器 /etc/redis/redis.conf 配置文件 映射宿主机 /data/myredis/redis.conf。 会将宿主机的配置文件复制到docker中。
+
+--appendonly yes  开启redis 持久化
+
+--privileged=true	让容器内的root有真正的root权限，否则容器内的root只有外部普通用户权限
+
+```shell
+docker run --restart=always --privileged=true -itd -v /data/myredis/data:/data -v /data/myredis/redis.conf:/etc/redis/redis.conf -p 16379:6379 --name myredis redis redis-server /etc/redis/redis.conf --appendonly yes
+```
+
+- 警告1：
+
+WARNING: The TCP backlog setting of 511 cannot be enforced because /proc/sys/net/core/somaxconn is set to the lower value of 128.
+
+意思：TCP backlog区大不能设置为511，因为/proc/sys/net/core/somaxconn要求设为小于128的值
+
+```shell
+方法1： echo "net.core.somaxconn=551" > /etc/sysctl.conf
+方法2： sysctl net.core.somaxconn=551
+```
+
+- 警告2：
+
+WARNING overcommit_memory is set to 0! Background save may fail under low memory condition. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+
+意思： overcommit_memory的值设置为0！ 在低内存条件下，后台保存可能会失败。 要解决此问题，请将“vm.overcommit_memory = 1”添加到/etc/sysctl.conf，然后重新启动或运行命令“sysctl vm.overcommit_memory = 1”以使其生效。
+
+```shell
+方法1： echo 1 > /proc/sys/vm/overcommit_memory
+方法2： echo "vm.overcommit_memory=1" >> /etc/sysctl.conf
+方法3： sysctl vm.overcommit_memory=1
+```
 
