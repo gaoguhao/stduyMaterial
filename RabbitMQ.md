@@ -2,7 +2,7 @@
 
 ## 一、安装
 
-RabbitMQ server是依托于Erlang的在安装时必须先安装对应版本的Erlang。
+RabbitMQ server是依托于Erlang的在安装时必须先安装对应版本的Erlang。两者的安装均需使用管理员权限进行安装。
 
 ### 1、window环境：
 
@@ -38,9 +38,21 @@ Error: unable to perform an operation on node 'rabbit@LAPTOP-VTKUK0VT'. Please s
 
 解决方法：
 
-修改系统中 .erlang.cookie ，把C:\Users\admin下的.erlang.cookie，复制并替换掉
+1、确认下 .erlang.cookie文件大部分情况可以解决。修改系统中 .erlang.cookie ，把C:\Users\admin下的.erlang.cookie，复制并替换掉C:\Windows\System32\config\systemprofile
 
-##### 2.2 停止节点
+2、如果方法1未能解决可能跟开启的账号相关，需要到“服务”里去设置RabbitServer的启动用户，设置RabbitServer的启动用户后重启下RabbitServer服务。
+
+##### 2.2 重启节点
+
+使用rabbitmqctl.bat在sbin目录
+
+```dos
+rabbitmqctl.bat restart
+//启动节点
+rabbitmqctl.bat start_app
+```
+
+##### 2.3 停止节点
 
 使用rabbitmqctl.bat在sbin目录
 
@@ -48,11 +60,31 @@ Error: unable to perform an operation on node 'rabbit@LAPTOP-VTKUK0VT'. Please s
 rabbitmqctl.bat stop
 ```
 
-##### 2.3 检查节点状态
+##### 2.4 检查节点状态
 
 使用rabbitmqctl.bat在sbin目录
 
 ```dos
 rabbitmqctl.bat status
 ```
+
+##### 2.5 用户角色
+
+在控制界面点击add a user进行角色创建及角色权限设置
+
+![image-20210303215752956](E:\gitTest\images\rabbitmq-userCreate.png)
+
+##### 2.6 Virtual Hosts配置
+
+RabbitMQ中可以虚拟消息服务器Virtual Hosts（虚拟主机），每个Virtual Hosts相当于一个相对独立的RabbitMQ服务器，每个Virtual Host之间是相互隔离的，exchange、queue、message不能互通。可理解为mysql中的db。Virtual Name一般以/开头。
+
+2.6.1 虚拟主机创建
+
+点击admin侧边栏目里的Virtual Hosts后点击add a Virtual Host进行虚拟机创建
+
+![image-20210303220403612](E:\gitTest\images\rabbitMQ-virtualHostCreate.png)
+
+点击虚拟机名进入到虚拟机权限设置界面
+
+![image-20210303220751763](E:\gitTest\images\rabbitMQ-virtualHostSetPermission.png)
 
