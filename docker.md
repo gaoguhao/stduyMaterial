@@ -1,4 +1,4 @@
-# 1、docker
+# docker
 
 ### 1、docker安装
 
@@ -283,7 +283,7 @@ docker run --restart=always -itd -p 8888:8080 -v /data/tomcat/:/usr/local/tomcat
 
 -v 指定我们容器的`/usr/local/tomcat/webapps/`目录为`/root/tomcat/`主机目录，后续我们要对tomcat进行操作直接在主机这个目录操作即可。
 
-#### 14、redis配置
+### 14、redis配置
 
 ##### 1、安装docker pull redis
 
@@ -301,8 +301,18 @@ redis-server /etc/redis/redis.conf	redis 将以 /etc/redis/redis.conf 为配置�
 
 --privileged=true	让容器内的root有真正的root权限，否则容器内的root只有外部普通用户权限
 
+在redis.conf内：
+
+1）注释掉bind 127.0.0.1，行首添加#即为注释，
+
+2）daemonize默认no，否则无法编译。
+
+3）如果需要远程连接，则需要将protected-mode变成no（保护模式下非本地连接不能访问）
+
+4）如果还需要设置密码加入属性 requirepass XXXX,xxx表示密码
+
 ```shell
-docker run --restart=always --privileged=true -itd -v /data/myredis/data:/data -v /data/myredis/redis.conf:/etc/redis/redis.conf -p 16379:6379 --name myredis redis redis-server /etc/redis/redis.conf --appendonly yes
+docker run --restart=always --privileged=true -itd -v /data/myredis/data:/data -v /data/myredis/sysctl.conf:/etc/sysctl.conf -v /data/myredis/redis.conf:/etc/redis/redis.conf -p 16379:6379 --name myredis redis redis-server /etc/redis/redis.conf --appendonly yes
 ```
 
 - 警告1：
@@ -326,5 +336,25 @@ WARNING overcommit_memory is set to 0! Background save may fail under low memory
 方法1： echo 1 > /proc/sys/vm/overcommit_memory
 方法2： echo "vm.overcommit_memory=1" >> /etc/sysctl.conf
 方法3： sysctl vm.overcommit_memory=1
+```
+
+#### 15、docker复制命令
+
+##### 1)将文件从docker镜像内拷贝到系统文件夹内
+
+docker cp  docker镜像名:想要修改的文件的路径 想要复制到的路径
+
+```shell
+docker cp myredis:/etc/redis/redis.conf /data/myredis/redis.conf
+```
+
+##### 2)将文件从系统文件夹内拷贝到docker镜像
+
+docker cp  想要复制的文件 docker镜像名:想要修改的文件的路径
+
+先停止docker镜像服务后修改，再重启镜像服务
+
+```shell
+docker cp /data/myredis/redis.conf myredis:/etc/redis/redis.conf
 ```
 
