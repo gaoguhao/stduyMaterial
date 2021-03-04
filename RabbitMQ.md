@@ -88,3 +88,41 @@ RabbitMQ中可以虚拟消息服务器Virtual Hosts（虚拟主机），每个Vi
 
 ![image-20210303220751763](E:\gitTest\images\rabbitMQ-virtualHostSetPermission.png)
 
+### 3、docker安装RabbitMQ
+
+##### 3.1获取镜像
+
+```shell
+#指定版本，该版本包含了web控制页面
+docker pull rabbitmq:3.8.14-management
+```
+
+##### 3.2运行镜像
+
+###### 3.2.1镜像创建和启动容器
+
+说明：
+
+- -d 后台运行容器；
+- --name 指定容器名；
+- -p 指定服务运行的端口（5672：应用访问端口；15672：控制台Web端口号）；
+- -v 映射目录或文件；
+- --hostname 主机名（RabbitMQ的一个重要注意事项是它根据所谓的 “节点名称” 存储数据，默认为主机名）；
+- -e 指定环境变量；（RABBITMQ_DEFAULT_VHOST：默认虚拟机名；RABBITMQ_DEFAULT_USER：默认的用户名；RABBITMQ_DEFAULT_PASS：默认用户名的密码）
+
+查看正在运行容器
+
+```shell
+#方式一：默认guest 用户，密码也是 guest
+docker run -d --hostname gaorabbit --name rabbit -p 15672:15672 -p 5672:5672 rabbitmq:management
+
+#方式二：设置用户名和密码
+docker run -d --name gaorabbit --hostname myRabbit -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=admin -e RABBITMQ_DEFAULT_PASS=a12345678  -e RABBITMQ_DEFAULT_VHOST=gaoggvh -v /data/rabbitMQ:/var/lib/rabbitmq rabbitmq:3.8.14-management
+```
+
+###### 3.2.2启动rabbitmq_management
+
+```shell
+docker exec -it gaorabbit rabbitmq-plugins enable rabbitmq_management
+```
+
