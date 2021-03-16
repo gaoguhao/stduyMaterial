@@ -176,7 +176,7 @@ docker search mysql
 
 在docker hub	:	https://hub.docker.com/	软件里点击版本tag信息进入版本信息界面查看，如下图点击DIGEST:31985b230b43进入
 
-![image-20210301211927755](E:\gitTest\images\tag版本信息查看.png)
+![image-20210301211927755](images\tag版本信息查看.png)
 
 ### 12、docker配置mysql
 

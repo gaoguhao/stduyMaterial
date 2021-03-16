@@ -72,7 +72,7 @@ rabbitmqctl.bat status
 
 在控制界面点击add a user进行角色创建及角色权限设置
 
-![image-20210303215752956](E:\gitTest\images\rabbitmq-userCreate.png)
+![image-20210303215752956](images\rabbitmq-userCreate.png)
 
 ##### 2.6 Virtual Hosts配置
 
@@ -82,11 +82,11 @@ RabbitMQ中可以虚拟消息服务器Virtual Hosts（虚拟主机），每个Vi
 
 点击admin侧边栏目里的Virtual Hosts后点击add a Virtual Host进行虚拟机创建
 
-![image-20210303220403612](E:\gitTest\images\rabbitMQ-virtualHostCreate.png)
+![image-20210303220403612](images\rabbitMQ-virtualHostCreate.png)
 
 点击虚拟机名进入到虚拟机权限设置界面
 
-![image-20210303220751763](E:\gitTest\images\rabbitMQ-virtualHostSetPermission.png)
+![image-20210303220751763](images\rabbitMQ-virtualHostSetPermission.png)
 
 ### 3、docker安装RabbitMQ
 
@@ -108,7 +108,7 @@ docker pull rabbitmq:3.8.14-management
 - -p 指定服务运行的端口（5672：应用访问端口；15672：控制台Web端口号）；
 - -v 映射目录或文件；
 - --hostname 主机名（RabbitMQ的一个重要注意事项是它根据所谓的 “节点名称” 存储数据，默认为主机名）；
-- -e 指定环境变量；（RABBITMQ_DEFAULT_VHOST：默认虚拟机名；RABBITMQ_DEFAULT_USER：默认的用户名；RABBITMQ_DEFAULT_PASS：默认用户名的密码）
+- -e 指定环境变量,可选；（RABBITMQ_DEFAULT_VHOST：默认虚拟机名；RABBITMQ_DEFAULT_USER：默认的用户名；RABBITMQ_DEFAULT_PASS：默认用户名的密码）
 
 查看正在运行容器
 
@@ -117,7 +117,7 @@ docker pull rabbitmq:3.8.14-management
 docker run -d --hostname gaorabbit --name rabbit -p 15672:15672 -p 5672:5672 rabbitmq:management
 
 #方式二：设置用户名和密码
-docker run -d --name gaorabbit --hostname myRabbit -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=admin -e RABBITMQ_DEFAULT_PASS=a12345678  -e RABBITMQ_DEFAULT_VHOST=gaoggvh -v /data/rabbitMQ:/var/lib/rabbitmq rabbitmq:3.8.14-management
+docker run -d --name gaorabbit --hostname myRabbit -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=admin -e RABBITMQ_DEFAULT_PASS=a12345678 -v /data/rabbitMQ:/var/lib/rabbitmq rabbitmq:3.8.14-management
 ```
 
 ###### 3.2.2启动rabbitmq_management
@@ -126,3 +126,409 @@ docker run -d --name gaorabbit --hostname myRabbit -p 5672:5672 -p 15672:15672 -
 docker exec -it gaorabbit rabbitmq-plugins enable rabbitmq_management
 ```
 
+# 二、java代码实现
+
+### 1、简单模式
+
+##### 1.1、创建简单模式工程
+
+在pox.xml文件中导入maven依赖
+
+```xml
+<dependency>
+	<groupId>com.rabbitmq</groupId>
+	<artifactId>amqp-client</artifactId>
+	<version>5.11.0</version>
+</dependency>
+```
+
+##### 1.2、共有工具类，配置RabbitMQ服务信息，同时创建连接
+
+```java
+public class ConnectionUtil {
+    private static String HostName="1.15.71.35";
+    private static Integer QueuePort=5672;
+    private static String QueueName="admin";
+    private static String QueuePasswd="Ab00859567c!";
+    private static String QueueVHost="/gaoggVhost";
+
+    public static Connection getConnection() throws IOException, TimeoutException {
+        //创建工厂
+        ConnectionFactory connectionFactory = new ConnectionFactory();
+        //设置rabbitmq服务器信息
+        connectionFactory.setHost(HostName);
+        connectionFactory.setPort(QueuePort);
+        connectionFactory.setUsername(QueueName);
+        connectionFactory.setPassword(QueuePasswd);
+        connectionFactory.setVirtualHost(QueueVHost);
+        //创建连接
+        Connection connection = connectionFactory.newConnection();
+        return connection;
+    }
+}
+```
+
+##### 1.3、服务提供方编写（生产者）
+
+```java
+//设置简单的队列名（queue）
+    public static String QUEUE_NAME="simple_queue";
+    public static void main(String[] args) throws IOException, TimeoutException {
+        //通过工厂类创建工厂
+        Connection connection = ConnectionUtil.getConnection();
+        //创建频道
+        Channel channel = connection.createChannel();
+        //声明队列
+        /**
+         * 参数说明：
+         *  1、队列名
+         *  2、是否为持久化队列（消息持久化保存在服务器上），true是|false否
+         *  3、是否独占本连接
+         *  4、是否在不使用的时候队列自动删除
+         *  5、其他参数
+         */
+        channel.queueDeclare(QUEUE_NAME,true,false,false,null);
+        String SendMessages="我是producer，我发送了一条简单的文字信息做测试";
+        //发送消息
+        /**
+         * 发送消息参数说明：
+         *  1、交换机名，“”表示默认的交换机
+         *  2、路径key。简单模式中可以使用队列名填写
+         *  3、消息其他属性
+         *  4、消息内容，转换为字节流
+         */
+        channel.basicPublish("",QUEUE_NAME,null,SendMessages.getBytes());
+        //关闭资源
+        channel.close();
+        connection.close();
+    }
+```
+
+##### 1.4、消息接受方（消费者）
+
+消费者创建后(DefaultConsumer defaultConsumer = new DefaultConsumer(channel))需要编写消费监听事件channel.basicConsume(QUEUE_NAME,true,defaultConsumer)，要不然消费者代码将不起效果
+
+```java
+    public static void main(String[] args) throws IOException, TimeoutException {
+        //创建rabbitmq方法
+        Connection connection = ConnectionUtil.getConnection();
+        //创建频道
+        Channel channel = connection.createChannel();
+        //设置队列
+        /**
+         * 参数说明：1、队列名称，2、是否为持久化队列，3、是否为独占本链接，
+         * 4、是否在空闲时自动删除队列，5、其他参数
+         */
+        channel.queueDeclare(Producer.QUEUE_NAME,true,false,false,null);
+        //创建消费者
+        DefaultConsumer defaultConsumer = new DefaultConsumer(channel){
+            @Override
+            public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+                System.out.println("路由key："+envelope.getRoutingKey());
+                System.out.println("交换机:"+envelope.getExchange());
+                System.out.println("消息id："+envelope.getDeliveryTag());
+                System.out.println("接受到的消息:"+body.toString());
+            }
+        };
+        //监听队列
+        /**
+         * 参数说明：1、队列名称，
+         * 2、是否要自动确认，
+         *  true表示消息接收到后自动向MQ回复接受到了，MQ则会将消息从队列中删除
+         *  false则需要手动确认，才会删除
+         *  3、消费者代码
+         * */
+        channel.basicConsume(Producer.QUEUE_NAME,true,defaultConsumer);
+    }
+```
+
+##### 1.5测试及总结
+
+总结：
+
+生产者发送消息到RabbitMQ队列（simple_queue,java自定义的队列名）
+
+消费者接受RabbitMQ队列消息
+
+简单模式：生产者发送消息到队列中，一个消费者从队列中接收消息。
+
+> 在RabbitMQ中消费者只能从队列接收消息。
+>
+> 
+
+生产者发送消息后会在MQ后台查询到消息，当消费者获取并处理了消息后MQ后台将会显示消息以处理（消息为空）
+
+生产者发送消息
+
+![image-20210304201532131](images\RabbitMQ-Message-producer.png)
+
+消费者获取并处理了消息
+
+![image-20210304201933336](images\rabbitMQ-Messages-Consumer.png)
+
+### 2、work-queue模式
+
+多个消费者绑定一个队列，消费被各个消费者进行抢占。类似负载均衡的轮询策略；消息a被消费者1使用，消费者2就在消费者1繁忙时就会执行消息b。代码与简单模式相近，区别在于简单模式是1对1，workqueue是1对多。
+
+### 3、订购模式
+
+订阅模式分三种：发布订阅模式（基于fanout广播）、Routing路由模式(direct)，通配符模式（topics）
+
+#### 3.1、发布与订购模式
+
+使用交换机exchange及交换机fanout（广播）模式，将消费者与消息队列进行绑定，消费者只能接受绑定路由的绑定队列的消息。
+
+> 需要定义交换机 FANOUT_EXCHANGE_NAME；
+>
+> 需要创建频道与交换的绑定关系：chanel.exchangeDeclare("交换机名"，“交换机类型”),
+>
+> 需要绑定队列与叫关系：queueBind("序列名","交换机名“,"路由key")
+
+##### 3.1.1生产者代码
+
+```java
+public class FanoutProducer {
+    public static String FANOUT_EXCHANGE_NAME="fanout_exchange_name";
+    public static String FANOUT_QUEUE_NAME1="fanout_QUEUE_NAME1";
+    public static String FANOUT_QUEUE_NAME2="fanout_QUEUE_NAME2";
+    public static void main(String[] args) throws IOException, TimeoutException {
+
+        Connection connection = ConnectionUtil.getConnection();
+        Channel channel = connection.createChannel();
+        //绑定交换机，1、交换机名；2、交换机类型（fanoun）
+        channel.exchangeDeclare(FANOUT_EXCHANGE_NAME, BuiltinExchangeType.FANOUT);
+        channel.queueDeclare(FANOUT_QUEUE_NAME1,true,false,false,null);
+        channel.queueDeclare(FANOUT_QUEUE_NAME2,true,false,false,null);
+        String messages;
+        for(int i=1;i<=10;i++){
+            //队列绑定到交换机
+            /**
+             * 1、队列名；2、交换机名；3、路由key
+             */
+            channel.queueBind(FANOUT_QUEUE_NAME1,FANOUT_EXCHANGE_NAME,"");
+            channel.queueBind(FANOUT_QUEUE_NAME2,FANOUT_EXCHANGE_NAME,"");
+            messages="我是发布与订阅模式：FANOUT广播方法发送的信息"+i;
+        /*
+        1、交换机名；2、路由key;3、其他参数；4、发送的消息
+         */
+            channel.basicPublish(FANOUT_EXCHANGE_NAME,"",null,messages.getBytes());
+        }
+
+        channel.close();
+        connection.close();
+    }
+}
+```
+
+##### 3.1.2消费者代码
+
+```java
+public class FanoutConsumer1 {
+    public static void main(String[] args) throws IOException, TimeoutException {
+        Connection connection = ConnectionUtil.getConnection();
+        Channel channel = connection.createChannel();
+        //配置交换机,1、交换机名，交换机类型
+        channel.exchangeDeclare(FanoutProducer.FANOUT_EXCHANGE_NAME, BuiltinExchangeType.FANOUT);
+        channel.queueDeclare(FanoutProducer.FANOUT_QUEUE_NAME1,true,false,false,null);
+        channel.queueBind(FanoutProducer.FANOUT_QUEUE_NAME1,FanoutProducer.FANOUT_EXCHANGE_NAME,"");
+        DefaultConsumer defaultConsumer = new DefaultConsumer(channel){
+            @Override
+            public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+                System.out.println("consumer1路由key："+envelope.getRoutingKey());
+                System.out.println("consumer1交换机:"+envelope.getExchange());
+                System.out.println("consumer1消息id："+envelope.getDeliveryTag());
+                System.out.println("consumer1接受到的消息:"+new String(body,"utf-8"));
+            }
+        };
+        /**
+         * 1、队列名；2、是否要自动确认;3、消费者信息
+         * 监听队列
+         */
+        channel.basicConsume(FanoutProducer.FANOUT_QUEUE_NAME1,true,defaultConsumer);
+    }
+}
+```
+
+#### 3.2Routing路由模式
+
+>与发布订购模式的区别在于交换机模式由广播fanout改为了路由direct同时需要设置路由key
+>
+>需要建立队列，交换机，路由的绑定关系
+>
+>发送消息时需要绑定路由
+>
+>消费者只能收取绑定路由key消息
+
+##### 3.2.1生产者代码
+
+```java
+public class RoutingProducer {
+    public static String ROUTING_EXCHANGE_NAME="routing_exchange_name";
+    public static String ROUTING_QUEUE_INSERT="routing_queue_insert";
+    public static String ROUTING_QUEUE_DELETE="routing_queue_delete";
+
+    public static void main(String[] args) throws IOException, TimeoutException {
+        Channel channel = ConnectionUtil.getConnection().createChannel();
+        //创建交换机
+        channel.exchangeDeclare(ROUTING_EXCHANGE_NAME, BuiltinExchangeType.DIRECT);
+        //创建队列
+        channel.queueDeclare(ROUTING_QUEUE_INSERT,true,false,false,null);
+        channel.queueDeclare(ROUTING_QUEUE_DELETE,true,false,false,null);
+
+        //绑定队列，交换机，路由关系，参数分别是，队列名，交换机名，路由key
+        channel.queueBind(ROUTING_QUEUE_INSERT,ROUTING_EXCHANGE_NAME,"gaogg.insert");
+        channel.queueBind(ROUTING_QUEUE_DELETE,ROUTING_EXCHANGE_NAME,"gaogg.delete");
+        //发送消息
+        String messages="我是Routing路由模式：DIRECT路由发送的insert信息";
+        //交换机名，路由key,消息其他参数，消息内容
+        channel.basicPublish(ROUTING_EXCHANGE_NAME,"gaogg.insert",null,messages.getBytes());
+        messages="我是Routing路由模式：DIRECT路由发送的delete信息";
+        channel.basicPublish(ROUTING_EXCHANGE_NAME,"gaogg.delete",null,messages.getBytes());
+    }
+}
+```
+
+##### 3.2.2消费者代码
+
+```java
+public class RoutingConsumerInsert {
+    public static void main(String[] args) throws IOException, TimeoutException {
+        Channel channel = ConnectionUtil.getConnection().createChannel();
+        channel.exchangeDeclare(RoutingProducer.ROUTING_EXCHANGE_NAME, BuiltinExchangeType.DIRECT);
+        channel.queueDeclare(RoutingProducer.ROUTING_QUEUE_INSERT,true,false,false,null);
+        channel.queueBind(RoutingProducer.ROUTING_QUEUE_INSERT,
+                RoutingProducer.ROUTING_EXCHANGE_NAME,"gaogg.insert");
+        DefaultConsumer consumer = new DefaultConsumer(channel){
+            @Override
+            public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+                System.out.println("RoutingInsert路由key："+envelope.getRoutingKey());
+                System.out.println("RoutingInsert交换机:"+envelope.getExchange());
+                System.out.println("RoutingInsert消息id："+envelope.getDeliveryTag());
+                System.out.println("RoutingInsert接受到的消息是："+new String(body,"utf-8"));
+            }
+        };
+        channel.basicConsume(RoutingProducer.ROUTING_QUEUE_INSERT,true,consumer);
+    }
+}
+```
+
+3.3Topic通配符模式
+
+> 与路由模式区别在于，路由模式是通过路由1对1精确查询的，而通配符模式是通过路由1对多模糊匹配。
+>
+> 通配符模式分为2个通配符：
+>
+> #匹配多个字符串，gaogg.abbc.cc就可以通过gaogg.#或者#.cc匹配到
+>
+> ```shell
+> *匹配单个字符串,gaogg.abbc.cc可以通过 *.abbc.* 来匹配到
+> ```
+
+### 4、RabbitMQ高级特性
+
+#### 4.1	消息的可靠投递
+
+消息的可靠投递分两种：
+
+##### 1、confirm确认模式：
+
+> 交换机exchange接受消息后就会调用confirm方法，如果返回boolean参数为true则表示成功，如false则失败需要处理；
+>
+> 方法的使用：
+>
+> 1）spring配置文件中设置rabbit:connection-factory 的publisher-confirms=true
+>
+> ```xml
+> <rabbit:connection-factory id="connectionFactory" host="${rabbitmq.host}" port="${rabbitmq.port}" username="${rabbitmq.username}" password="${rabbitmq.password}" virtual-host="${rabbitmq.virtual-host}" publisher-confirms="true"/>
+> ```
+>
+> 2)在方法里设置setConfirmsCallback在setConfirmsCallback内部实现new ConfirmsCallback()方法
+>
+> ```java
+> @RunWith(SpringJUnit4ClassRunner.class)
+> @ContextConfiguration(locations = "classpath:springRabbitMQProducer.xml")
+> public class SpringQueueTest {
+>     @Autowired
+>     public RabbitTemplate rabbitTemplate;
+>     @Test
+>     public void springQueuetest1(){
+>         String message="springqueue队列发送的数据";
+>         rabbitTemplate.setConfirmCallback(new RabbitTemplate.ConfirmCallback() {
+>             @Override
+>             /**
+>              * correlationData  相关配置信息
+>              * b    exchange交换机接受到信息后的boolean回值，true成功，false失败
+>              * s    报错信息，b为true时，s=null,false时为报错信息
+>              */
+>             public void confirm(CorrelationData correlationData, boolean b, String s) {
+>                 if(b){
+>                     System.out.println("交换机接受成功:"+s);
+>                 }else{
+>                     System.out.println("交换机接受失败:"+s); 
+>                 } 
+>             }
+>         });
+>         rabbitTemplate.convertSendAndReceive("springqueue",message.getBytes());
+>     }
+> }
+> ```
+
+##### 2、return回退模式：
+
+> exchange交换机接受到消息后，exchange路由到queue队列失败时才会发起的回调returncallback
+>
+> 方法的使用：
+>
+> 1)在spring配置文件中设置rabbit:connect-factory里的publisher-returns=true
+>
+> ```xml
+> <rabbit:connection-factory id="connectionFactory" host="${rabbitmq.host}" port="${rabbitmq.port}" username="${rabbitmq.username}" password="${rabbitmq.password}" virtual-host="${rabbitmq.virtual-host}" publisher-returns="true"/>
+> ```
+>
+> 2)在方法里设置setMandatory为true表示开启returnback回值开启，默认回值是丢弃的，如果不开启将无法获取到回值
+>
+> 3）方法里设置setReturnCallback在setConfirmsCallback内部实现new ReturnCallback()方法
+>
+> ```java
+> @RunWith(SpringJUnit4ClassRunner.class)
+> @ContextConfiguration(locations = "classpath:springRabbitMQProducer.xml")
+> public class SpringQueueTest {
+>     @Autowired
+>     public RabbitTemplate rabbitTemplate;
+>     @Test
+>     public void springQueuetest1(){
+>         String message="springqueue队列发送的数据";
+>         rabbitTemplate.setMandatory(true);
+>         rabbitTemplate.setReturnCallback(new RabbitTemplate.ReturnCallback() {
+>             @Override
+>             /**
+>              * message  消息信息
+>              * i    错误码
+>              * s    错误信息
+>              * s1   交换机
+>              * s2   路由
+>              */
+>             public void returnedMessage(Message message, int i, String s, String s1, String s2) {
+>                 System.out.println(message);
+>                 System.out.println(i);
+>                 System.out.println(s);
+>                 System.out.println(s1);
+>                 System.out.println(s2);
+>             }
+>         });
+>         rabbitTemplate.convertSendAndReceive("springqueue",message.getBytes());
+>     }
+> }
+> ```
+
+##### 3、事务控制
+
+RabbitMQ提供了事务机制，但是性能较差不建议使用；
+
+在channel下面提供了完成事务控制的方法：
+
+txSelect()用于将当前channel设置成transaction模式，就是事务开启；
+
+txCommit()用于事务提交；
+
+txRollback()用于事务的回滚。

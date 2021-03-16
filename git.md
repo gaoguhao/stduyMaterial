@@ -4,7 +4,7 @@
 
 2、进入文件夹后右击鼠标，选择Git Bash Here
 
-![githere](E:\gitTest\images\githere.jpg)
+![githere](images\githere.jpg)
 
 3、设置git基础信息,全局变量
 
@@ -201,7 +201,7 @@ git rm 文件名
 git rm -f 文件名
 ```
 
-![rm-f](E:\gitTest\images\rm-f.jpg)
+![rm-f](images\rm-f.jpg)
 
 ##### 4)如果想把文件从暂存区域移除，但仍然希望保留在当前工作目录中，换句话说，仅是从跟踪清单中删除，使用 --cached 选项即可
 
@@ -209,7 +209,7 @@ git rm -f 文件名
 git rm --cached 文件名
 ```
 
-![rm--cached](E:\gitTest\images\rm--cached.jpg)
+![rm--cached](images\rm--cached.jpg)
 
 ##### 5)递归删除
 
@@ -259,7 +259,7 @@ git show <hashcode> <filename>
 git show 41f90bd685e81870baf641c5d2d82481c3677cb9 /E/gitTest/git.md
 ```
 
-![gitinfo](E:\gitTest\images\gitinfo.jpg)
+![gitinfo](images\gitinfo.jpg)
 
 ##### 11、查看某个文件的包含提交人员，日期、版本号等记录信息，不包括修改详情
 

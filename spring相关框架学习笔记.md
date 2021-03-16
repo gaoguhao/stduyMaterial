@@ -1,6 +1,6 @@
-框架学习笔记
+# 框架学习笔记
 
-#### 1、spring学习笔记
+## 1、spring学习笔记
 
 ##### 1)在web项目里需要在web.xml内配置读取spring配置文件及spring监听器
 
@@ -67,7 +67,7 @@ XML方式注入：
 @Transactional注解
 ```
 
-#### 2、springmvc学习笔记
+## 2、springmvc学习笔记
 
 ##### 1)在web项目里需要在web.xml内配置springmvc前端控制器
 
@@ -121,7 +121,7 @@ XML方式注入：
     <mvc:default-servlet-handler/>
 ```
 
-#### 3、mybatis配置
+## 3、mybatis配置
 
 ##### 1）单独mybatis主xml配置
 
@@ -266,7 +266,7 @@ http://www.springframework.org/schema/context/spring-context.xsd">
 </mapper>
 ```
 
-#### 4、dubbo框架开发与spring整合
+## 4、dubbo框架开发与spring整合
 
 ##### 1）springxml文件配置
 
@@ -325,9 +325,9 @@ http://www.springframework.org/schema/context/spring-context.xsd">
 
 ​	b、loadbalance 属性是设置负载均衡的方法；
 
-#### 5、spring data jpa
+## 5、spring data jpa
 
-##### 1）JPA测试
+### 1）JPA测试
 
 ###### a、测试项目配置文件persistence.xml
 
@@ -512,7 +512,7 @@ entityManager.merge(customer);
 entityManager.remove(customer);
 ```
 
-##### 2）jpql语句查询
+### 2）jpql语句查询
 
 jpql语句查询全部，倒序排序，查询总量，分页查询及条件查询。
 
@@ -568,7 +568,7 @@ entityTransaction.commit();
 entityManager.close();
 ```
 
-##### 3）spring data jpa jpql&sql查询单表查询
+### 3）spring data jpa jpql&sql查询单表查询
 
 ###### a、xml配置
 
@@ -933,7 +933,7 @@ public void customerTest(){
 
 
 
-##### 4）多表查询
+### 4）多表查询
 
 ###### 1、一对多
 
@@ -1215,7 +1215,7 @@ public class CustLinkMan {
     )
 ```
 
-##### 5）对象导航查询
+### 5）对象导航查询
 
 导航查询通过查询对象的内部get方法获取出关联对象的数据；
 
@@ -1238,6 +1238,131 @@ FetchType.EAGER	:	多对多时默认是立即加载；
 }
 ```
 
-#### 6、spring boot
+## 6、spring boot
 
-![image-20210222144547222](E:\学习笔记\image-20210222144547222.png)
+![image-20210222144547222](images\image-20210222144547222.png)
+
+### 6.1.1spring boot集成rabbitMQ
+
+#### 6.1.1.1、生产者项目
+
+##### 6.1.1.1.1、pox.xml内配置依赖脚手架
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-amqp</artifactId>
+</dependency>
+```
+
+##### 6.1.1.1.2、application.yml RabbitMQ信息配置
+
+```yaml
+spring:
+  rabbitmq:
+    host: ip
+    port: 5672
+    password: 密码
+    username: 账号
+    virtual-host: 虚拟机名
+```
+
+##### 6.1.1.1.3、创建rabbitmq配置方法类
+
+```java
+@Configuration
+public class RabbitMQConfig {
+    //交换机名
+    public static final String GAO_TOPIC_EXCHANGE="gao_topic_exchage";
+    //队列名
+    public static final String GAO_TOPIC_QUEUE="gao_topic_queue";
+    //声名交换机
+    @Bean(value = "topicExchange")
+    public Exchange topicExchange(){
+        //durable设置持久标记
+        return ExchangeBuilder.topicExchange(GAO_TOPIC_EXCHANGE).durable(true).build();
+    }
+    //声明队列
+    @Bean(value = "topicQueue")
+    public Queue topicQueue(){
+        return QueueBuilder.durable(GAO_TOPIC_QUEUE).build();
+    }
+    //将队列绑定到交换机
+    @Bean
+    public Binding queueBindingExchange(@Qualifier("topicExchange")Exchange exchange,
+                                        @Qualifier("topicQueue")Queue queue){
+        //绑定队列与交换机并且申明路由key为以gao开头的所有路由gao#,noargs不指定其他参数
+        return BindingBuilder.bind(queue).to(exchange).with("gao.#").noargs();
+    }
+    @Bean
+    public Binding queueBindingExchange2(@Qualifier("topicExchange")Exchange exchange,
+                                        @Qualifier("topicQueue")Queue queue){
+        //绑定队列与交换机并且申明路由key为以gao开头的所有路由gao#,noargs不指定其他参数
+        return BindingBuilder.bind(queue).to(exchange).with("a.#").noargs();
+    }
+}
+```
+
+##### 6.1.1.1.4、编写测试方法
+
+```java
+@SpringBootTest
+@RunWith(SpringRunner.class)
+public class DemoApplicationTests {
+    @Autowired
+    public RabbitTemplate rabbitTemplate;
+    @Test
+    public void contextLoads() {
+	rabbitTemplate.convertSendAndReceive(RabbitMQConfig.GAO_TOPIC_EXCHANGE,"gao.insert",
+                "商品新增，路由key为gao.insert");
+	rabbitTemplate.convertSendAndReceive(RabbitMQConfig.GAO_TOPIC_EXCHANGE,"gao.update",
+                "商品更新，路由key为gao.update");
+	rabbitTemplate.convertSendAndReceive(RabbitMQConfig.GAO_TOPIC_EXCHANGE,"gao.delete",
+                "商品删除，路由key为gao.update");
+        	rabbitTemplate.convertSendAndReceive(RabbitMQConfig.GAO_TOPIC_EXCHANGE,"a.gao.delete",
+                "a商品删除，路由key为a.gao.update");
+    }
+}
+```
+
+#### 6.1.1.2、消费者项目
+
+##### 6.1.1.2.1、pox.xml内配置依赖脚手架
+
+```xml
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-amqp</artifactId>
+</dependency>
+```
+
+##### 6.1.1.2.2、application.yml RabbitMQ信息配置
+
+```yaml
+spring:
+  rabbitmq:
+    host: ip
+    port: 5672
+    password: 密码
+    username: 账号
+    virtual-host: 虚拟机名
+```
+
+##### 6.1.1.2.3、创建rabbitmq消费者方法
+
+```java
+@Component
+public class MyListener {
+    /**
+     * 接受队列消息
+     * @param messages 接受到的消息
+     * @RabbitListener 获取消费者消息注解，queues配置一个或多个路由queues={“a","b"},如果是单个拦截器主浊queues=“a”;
+     */
+    @RabbitListener(queues = "gao_topic_queue")
+    public void myListener1(String messages){
+        System.out.println("消费者接受到的消息是:"+messages);
+    }
+}
+```
+
+###### 
