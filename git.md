@@ -368,6 +368,17 @@ git pull 远程库起的名称(默认是origin) 远程分支名
 git remote prune 远程库起的名称
 ```
 
-#### 19、其他命令
+#### 19、代理设置
+
+```shell
+新增代理：代理端口7890
+git config --global http.proxy http://127.0.0.1:7890
+git config --global https.proxy http://127.0.0.1:7890
+取消代理：
+git config --global --unset http.proxy 
+git config --global --unset https.proxy 
+```
+
+#### 20、其他命令
 
 ###### 可参考码云v1.2手册： http://git.mydoc.io/?t=180676
