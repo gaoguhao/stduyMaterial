@@ -424,9 +424,196 @@ public class RoutingConsumerInsert {
 > *匹配单个字符串,gaogg.abbc.cc可以通过 *.abbc.* 来匹配到
 > ```
 
-### 4、RabbitMQ高级特性
+#### 4、RabbitMQ与spring整个
 
-#### 4.1	消息的可靠投递
+##### 4.1通用配置
+
+pom.xml文件内导入spring与amqp的相关依赖关系及打包插件,配置rabbitmq.properties文件
+
+```xml
+<properties>
+    <spring.version>5.1.7.RELEASE</spring.version>
+    <rabbit.version>2.1.8.RELEASE</rabbit.version>
+    <junit.version>4.12</junit.version>
+</properties>
+<dependencies>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-context</artifactId>
+        <version>${spring.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.amqp</groupId>
+        <artifactId>spring-rabbit</artifactId>
+        <version>${rabbit.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-test</artifactId>
+        <version>${spring.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>${junit.version}</version>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.8.0</version>
+            <configuration>
+                <source>1.8</source>
+                <target>1.8</target>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
+
+rabbitmq.properties
+
+```properties
+rabbitmq.host=ip
+rabbitmq.port=5672
+rabbitmq.username=username
+rabbitmq.password=userpassword
+rabbitmq.virtual-host=/visalhost
+```
+
+##### 4.2生产者整合
+
+spring配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       https://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/rabbit
+       http://www.springframework.org/schema/rabbit/spring-rabbit.xsd">
+
+<!--加载配置文件-->
+    <context:property-placeholder location="classpath:rabbitmq.properties"/>
+    <!--配置rabbitmq connectFactory信息-->
+    <rabbit:connection-factory id="connectionFactory"
+                               host="${rabbitmq.host}"
+                               port="${rabbitmq.port}" 
+                               username="${rabbitmq.username}" 
+                               password="${rabbitmq.password}" 
+                               virtual-host="${rabbitmq.virtual-host}"/>
+    <!--定义管理交换机，对列-->
+    <rabbit:admin connection-factory="connectionFactory" />
+    <!--定义rabbittemplate对象操作可以在代码中方便发送消息-->
+    <rabbit:template id="rabbitTemplate" connection-factory="connectionFactory"/>
+    <!--定义队列，auto-declare为不存在自动创建实例-->
+    <rabbit:queue id="springqueue" name="springqueue" auto-declare="true"/>
+    <!--生成广播交换机中持久化对列，不存在自动创建-->
+    <rabbit:queue id="spring_fanout_queue1" name="spring_fanout_queue1" auto-declare="true"/>
+    <rabbit:queue id="spring_fanout_queue2" name="spring_fanout_queue2" auto-declare="true"/>
+    <rabbit:queue id="spring_fanout_queue3" name="spring_fanout_queue3" auto-declare="true"/>
+    <!--定义广播fanout类型交换机，并绑定上述的3个队列-->
+    <rabbit:fanout-exchange id="spring_fanout_exchange" name="spring_fanout_exchange" auto-declare="true">
+        <rabbit:bindings>
+            <rabbit:binding queue="spring_fanout_queue1"/>
+            <rabbit:binding queue="spring_fanout_queue2"/>
+            <rabbit:binding queue="spring_fanout_queue3"/>
+        </rabbit:bindings>
+    </rabbit:fanout-exchange>
+    <!--生成路由routing交换机中持久化对列，不存在自动创建-->
+    <rabbit:queue id="spring_direct_queue1" name="spring_direct_queue1" auto-declare="true"/>
+    <rabbit:queue id="spring_direct_queue2" name="spring_direct_queue2" auto-declare="true"/>
+    <rabbit:queue id="spring_direct_queue3" name="spring_direct_queue3" auto-declare="true"/>
+    <rabbit:direct-exchange id="spring_direct_exchange" name="spring_direct_exchange"
+                            auto-declare="true">
+        <rabbit:bindings>
+            <rabbit:binding queue="spring_direct_queue1"/>
+            <rabbit:binding queue="spring_direct_queue2"/>
+            <rabbit:binding queue="spring_direct_queue3"/>
+        </rabbit:bindings>
+    </rabbit:direct-exchange>
+</beans>
+```
+
+代码发送消息
+
+```java
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(locations = "classpath:springRabbitMQProducer.xml")
+public class SpringQueueTest {
+ @Autowired
+ public RabbitTemplate rabbitTemplate;
+ @Test
+ public void springQueuetest1(){
+	String message="springqueue队列发送的数据";
+	rabbitTemplate.convertSendAndReceive("springqueue",message.getBytes());
+}
+```
+
+##### 4.3消费者整合
+
+spring配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       https://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/rabbit
+       http://www.springframework.org/schema/rabbit/spring-rabbit.xsd">
+
+    <context:property-placeholder location="classpath:rabbitmq.properties"/>
+    <!--配置rabbit工厂-->
+    <rabbit:connection-factory id="connectionFactory"
+                               host="${rabbitmq.host}"
+                               port="${rabbitmq.port}"
+                               username="${rabbitmq.username}"
+                               password="${rabbitmq.password}"
+                               virtual-host="${rabbitmq.virtual-host}"/>
+    <!--通过包扫描的方式将lister下的所有加有注解@component的实体类注册成消费者拦截器bean对象-->
+    <context:component-scan base-package="com.gaogg.lister"/>
+    <!--单个配置消费者拦截器bean对象，实体类多的情况下建议使用包扫描的方式配置-->
+<!--    <bean id="springConsumerLister" class="com.gaogg.lister.SpringConsumerLister"/>-->
+    <!--配置拦截器-->
+    <rabbit:listener-container connection-factory="connectionFactory">
+        <rabbit:listener ref="springConsumerLister" queue-names="springqueue"/>
+    </rabbit:listener-container>
+</beans>
+```
+
+代码实现：
+
+> 消费者要继承MessageListener实体类或其子类，并要实现其内部onMessage方法
+>
+> 消费者项目测试时只会启动项目保证spring配置文件被调用，拦截器被使用了功能就能正常使用
+
+```java
+@Component
+public class SpringConsumerLister implements MessageListener {
+
+    @Override
+    public void onMessage(Message message) {
+        System.out.println(message.getBody());
+    }
+}
+```
+
+### 5、RabbitMQ高级特性
+
+#### 5.1	消息的可靠投递
 
 消息的可靠投递分两种：
 
