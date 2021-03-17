@@ -644,11 +644,11 @@ public class SpringConsumerLister implements MessageListener {
 >             @Override
 >             /**
 >              * correlationData  相关配置信息
->              * b    exchange交换机接受到信息后的boolean回值，true成功，false失败
->              * s    报错信息，b为true时，s=null,false时为报错信息
+>              * ack    exchange交换机接受到信息后的boolean回值，true成功，false失败
+>              * cause    报错信息，b为true时，s=null,false时为报错信息
 >              */
->             public void confirm(CorrelationData correlationData, boolean b, String s) {
->                 if(b){
+>             public void confirm(CorrelationData correlationData, boolean ack, String cause) {
+>                 if(ack){
 >                     System.out.println("交换机接受成功:"+s);
 >                 }else{
 >                     System.out.println("交换机接受失败:"+s); 
@@ -688,20 +688,20 @@ public class SpringConsumerLister implements MessageListener {
 >         rabbitTemplate.setMandatory(true);
 >         rabbitTemplate.setReturnCallback(new RabbitTemplate.ReturnCallback() {
 >             @Override
->             /**
->              * message  消息信息
->              * i    错误码
->              * s    错误信息
->              * s1   交换机
->              * s2   路由
->              */
->             public void returnedMessage(Message message, int i, String s, String s1, String s2) {
->                 System.out.println(message);
->                 System.out.println(i);
->                 System.out.println(s);
->                 System.out.println(s1);
->                 System.out.println(s2);
->             }
+>            /**
+>                  * message  消息信息
+>                  * replyCode    错误码
+>                  * replyText    错误信息
+>                  * exchange   交换机
+>                  * routingKey   路由
+>                  */
+>                 public void returnedMessage(Message message, int replyCode, String replyText, String exchange, String routingKey) {
+>                         System.out.println(message);
+>                         System.out.println(replyCode);
+>                         System.out.println(replyText);
+>                         System.out.println(exchange);
+>                         System.out.println(routingKey);
+>                 }
 >         });
 >         rabbitTemplate.convertSendAndReceive("springqueue",message.getBytes());
 >     }
@@ -719,3 +719,119 @@ txSelect()用于将当前channel设置成transaction模式，就是事务开启�
 txCommit()用于事务提交；
 
 txRollback()用于事务的回滚。
+
+##### 4、消费者确认ACK(Acknowledge)
+
+>分成3种模式：1、手动确认模式acknowledge="manual"；2、自动确认模式acknowledge="auto"；3、根据异常情况确认模式acknowledge="none"，此方式较为麻烦不推荐使用；
+>
+>ACK默认是自动确认模式，在使用中我们需要手动的开启才能使用手动确认模式。需要在spring配置文件内rabbit拦截器rabbit:listener-container后面增加acknowledge="manual"
+
+```xml
+<rabbit:listener-container connection-factory="connectionFactory" acknowledge="manual">
+        <rabbit:listener ref="springConsumerLister" queue-names="springqueue"/>
+</rabbit:listener-container>
+```
+
+> 业务处理后需要调用channel.basicAck()进行手动签收，如果出现异常则需要调用channel.basicNack()方法，让其自动重新发送消息。
+
+```java
+@Component
+public class SpringConsumerLister implements ChannelAwareMessageListener {
+    /**
+     * consumer ACK手动确认:
+     * 1、需要在xml设置acknowledge="manual"；2、实体类中实现ChannelAwareMessageListener;
+     * 3、确认成功调用channel.basicAck()签收；4、失败调用channel.basicNack()拒绝签收,broker重新发送给consumer;
+     * 接口同时实现onMessage方法
+     * @param message
+     * @param channel
+     * @throws Exception
+     */
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        Thread.sleep(3000);
+        Long messageTag=message.getMessageProperties().getDeliveryTag();
+        try{
+            //1、接受到消息
+            System.out.println(new String(message.getBody(),"UTF-8"));
+            //2、业务逻辑处理
+            //强制报错让业务进入重发
+            int i=3/0;
+            /**
+             *  deliveryTag:   当前消息的tag标签
+             *  multiple：   签收消息，如果为true会签收deliveryTag及其之前的所有的消息，允许多条消息被签收；如果是false则不签收
+             */
+            //手动签收
+            channel.basicAck(messageTag,true);
+        }catch (Exception e){
+            /**
+             * requeue： 重回队列，为true时消息会重新回到queue队列里面，broker会重新将消息下发给用户
+             */
+            channel.basicNack(messageTag,true,true);
+        }
+    }
+}
+```
+
+#### 5.2消息限流及TTL
+
+##### 1、消息限流
+
+>使用场景，1、秒杀活动，2、消息推送，app重新安装后历史小时显示
+>
+>消息限流必须是ack机制手动确认模式；
+>
+>消费的按限流值1秒执行几条；prefetch的值就是一秒执行的条数，直到手动确认消费完毕后，才会继续拉下一条消息；
+>
+>spring配置文件里在rabbit拦截器listener-container里配置prefetch=“2”
+
+```xml
+<rabbit:listener-container connection-factory="connectionFactory" acknowledge="manual" 
+                               prefetch="2">
+        <rabbit:listener ref="springConsumerLister" queue-names="springqueue"/>
+    </rabbit:listener-container>
+```
+
+> 实现代码,代码里没有特殊配置
+
+```java
+@Component
+public class SpringConsumerLister implements ChannelAwareMessageListener {
+    /**
+     * consumer ACK手动确认:
+     * 1、需要在xml设置acknowledge="manual"；2、实体类中实现ChannelAwareMessageListener;
+     * 3、确认成功调用channel.basicAck()签收；4、失败调用channel.basicNack()拒绝签收,broker重新发送给consumer;
+     * 接口同时实现onMessage方法
+     * @param message
+     * @param channel
+     * @throws Exception
+     */
+    Integer i=0;
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+        Thread.sleep(3000);
+        Long messageTag=message.getMessageProperties().getDeliveryTag();
+        try{
+            //1、接受到消息
+            System.out.println(new String(message.getBody(),"UTF-8"));
+            System.out.println("i="+i);
+            //2、业务逻辑处理
+            if(i==5){
+                int i=3/0;
+            }
+            /**
+             *  deliveryTag:   当前消息的tag标签
+             *  multiple：   签收消息，如果为true会签收deliveryTag及其之前的所有的消息，允许多条消息被签收；如果是false则不签收
+             */
+            //手动签收
+            channel.basicAck(messageTag,true);
+            i++;
+        }catch (Exception e){
+            /**
+             * requeue： 重回队列，为true时消息会重新回到queue队列里面，broker会重新将消息下发给用户
+             */
+            channel.basicNack(messageTag,true,true);
+        }
+    }
+}
+```
+
