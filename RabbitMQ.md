@@ -424,9 +424,9 @@ public class RoutingConsumerInsert {
 > *匹配单个字符串,gaogg.abbc.cc可以通过 *.abbc.* 来匹配到
 > ```
 
-#### 4、RabbitMQ与spring整个
+### 4、RabbitMQ与spring整个
 
-##### 4.1通用配置
+#### 4.1通用配置
 
 pom.xml文件内导入spring与amqp的相关依赖关系及打包插件,配置rabbitmq.properties文件
 
@@ -484,7 +484,7 @@ rabbitmq.password=userpassword
 rabbitmq.virtual-host=/visalhost
 ```
 
-##### 4.2生产者整合
+#### 4.2生产者整合
 
 spring配置文件
 
@@ -528,18 +528,33 @@ spring配置文件
             <rabbit:binding queue="spring_fanout_queue3"/>
         </rabbit:bindings>
     </rabbit:fanout-exchange>
-    <!--生成路由routing交换机中持久化对列，不存在自动创建-->
+    <!--生成路由routing交换机，不存在自动创建-->
     <rabbit:queue id="spring_direct_queue1" name="spring_direct_queue1" auto-declare="true"/>
     <rabbit:queue id="spring_direct_queue2" name="spring_direct_queue2" auto-declare="true"/>
     <rabbit:queue id="spring_direct_queue3" name="spring_direct_queue3" auto-declare="true"/>
     <rabbit:direct-exchange id="spring_direct_exchange" name="spring_direct_exchange"
                             auto-declare="true">
         <rabbit:bindings>
-            <rabbit:binding queue="spring_direct_queue1"/>
+            <rabbit:binding  queue="spring_direct_queue1"/>
             <rabbit:binding queue="spring_direct_queue2"/>
             <rabbit:binding queue="spring_direct_queue3"/>
         </rabbit:bindings>
     </rabbit:direct-exchange>
+    
+    <rabbit:queue id="spring_topic_queue" name="spring_topic_queue" auto-declare="true"/>
+    <rabbit:topic-exchange id="spring_topic_exchange" name="spring_topic_exchange">
+        <rabbit:bindings>
+            <rabbit:binding pattern="gao.#" queue="spring_topic_queue"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
+    <!--定义通配topic交换机，不存在自动创建-->
+    <rabbit:queue id="spring_topic_queue" name="spring_topic_queue" auto-declare="true"/>
+    <rabbit:topic-exchange id="spring_topic_exchange" name="spring_topic_exchange">
+        <rabbit:bindings>
+            <!--pattern为路由key,queue队列名-->
+            <rabbit:binding pattern="gao.#" queue="spring_topic_queue"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
 </beans>
 ```
 
@@ -558,7 +573,7 @@ public class SpringQueueTest {
 }
 ```
 
-##### 4.3消费者整合
+#### 4.3消费者整合
 
 spring配置文件
 
@@ -835,3 +850,61 @@ public class SpringConsumerLister implements ChannelAwareMessageListener {
 }
 ```
 
+##### 2、TTL(Time To Live)的缩写, 也就是生存时间
+
+配置文件配置
+
+>rabbit:queue添加rabbit:queue-arguments属性配置entry属性里增加key="x-message-ttl",设置value为过期时间，并且通过value-type="java.lang.Integer"指定value的类型。
+>
+>key值可以通过管理后台通过增加队列里获取
+>
+>![image-20210318221453406](images\queue-info-data.png)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       https://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/rabbit
+       http://www.springframework.org/schema/rabbit/spring-rabbit.xsd">
+
+<!--加载配置文件-->
+    <context:property-placeholder location="classpath:rabbitmq.properties"/>
+    <!--配置rabbitmq connectFactory信息-->
+    <rabbit:connection-factory id="connectionFactory"
+                               host="${rabbitmq.host}"
+                               port="${rabbitmq.port}"
+                               username="${rabbitmq.username}"
+                               password="${rabbitmq.password}"
+                               virtual-host="${rabbitmq.virtual-host}" publisher-confirms="true" publisher-returns="true"/>
+    <!--定义管理交换机，对列-->
+    <rabbit:admin connection-factory="connectionFactory" />
+    <!--定义rabbittemplate对象操作可以在代码中方便发送消息-->
+    <rabbit:template id="rabbitTemplate" connection-factory="connectionFactory"/>
+    <!--消息过期时间TTL配置-->
+    <rabbit:queue id="queue_ttl" name="queue_ttl" >
+        <rabbit:queue-arguments>
+            <entry key="x-message-ttl" value="10000" value-type="java.lang.Integer"/>
+        </rabbit:queue-arguments>
+    </rabbit:queue>
+    <rabbit:topic-exchange id="exchange_ttl" name="exchange_ttl">
+        <rabbit:bindings>
+            <!--pattern路由key,queue队列名-->
+            <rabbit:binding pattern="gao.#" queue="queue_ttl"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
+</beans>
+```
+
+程序执行后
+
+![image-20210318220415959](images\rabbitmq_ttl.png)
+
+TTL时间到后
+
+![image-20210318220514232](images\rabbitmq_ttl_after.png)
