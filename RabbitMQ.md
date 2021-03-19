@@ -747,7 +747,7 @@ txRollback()用于事务的回滚。
 </rabbit:listener-container>
 ```
 
-> 业务处理后需要调用channel.basicAck()进行手动签收，如果出现异常则需要调用channel.basicNack()方法，让其自动重新发送消息。
+> 业务处理后需要调用channel.basicAck()进行手动签收，如果出现异常则需要调用channel.basicNack()多值或channel.basicReject()单值方法，让其自动重新发送消息。
 
 ```java
 @Component
@@ -782,6 +782,8 @@ public class SpringConsumerLister implements ChannelAwareMessageListener {
              * requeue： 重回队列，为true时消息会重新回到queue队列里面，broker会重新将消息下发给用户
              */
             channel.basicNack(messageTag,true,true);
+            //单个内容返回队列
+            //channel.basicReject(messageTag,true);
         }
     }
 }
@@ -852,7 +854,11 @@ public class SpringConsumerLister implements ChannelAwareMessageListener {
 
 ##### 2、TTL(Time To Live)的缩写, 也就是生存时间
 
-配置文件配置
+> a、只有内容在队列的最上方时TTL才会被消费；例如有10条内容，其中单条配置了TTL是在第2条，如果第一条没有被消费时即使消息时间超过了TTL的时间其第2条内容也不会消失，只有第二条被消费时到TTL时间后第二条会自动处理，如果被消费了则不做处理，如果没有被消费则会进入死信队列；
+>
+> b、当队列TTL与单条TTL同时存在时以时间短的为效；
+
+1）队列TTL配置文件配置
 
 >rabbit:queue添加rabbit:queue-arguments属性配置entry属性里增加key="x-message-ttl",设置value为过期时间，并且通过value-type="java.lang.Integer"指定value的类型。
 >
@@ -901,6 +907,26 @@ public class SpringConsumerLister implements ChannelAwareMessageListener {
 </beans>
 ```
 
+2）单条内容TTL设置
+
+设置单条内容TTL需要生产者发创建消息时在java代码内生产MessagePostProcessor对象的postProcessMessage实现方法使用setExpiration("5000")对象设置TTL时间
+
+```java
+@Test
+    public void springQueuetest3(){
+        String message = "springqueue队列发送的数据";
+        //消息后处理对象，设置一些消息的参数信息
+        MessagePostProcessor messagePostProcessor = new MessagePostProcessor() {
+            @Override
+            public Message postProcessMessage(Message message) throws AmqpException {
+                 message.getMessageProperties().setExpiration("5000");//设置过期时间
+                return message;
+            }
+        };
+        rabbitTemplate.convertSendAndReceive("exchange_ttl","gao.qttl", message.getBytes(),messagePostProcessor);
+    }
+```
+
 程序执行后
 
 ![image-20210318220415959](images\rabbitmq_ttl.png)
@@ -908,3 +934,120 @@ public class SpringConsumerLister implements ChannelAwareMessageListener {
 TTL时间到后
 
 ![image-20210318220514232](images\rabbitmq_ttl_after.png)
+
+#### 5.3死信队列（DLX）
+
+##### 5.3.1死信队列产生情况分析
+
+死信会在以下几种情况产生：
+
+###### 1）TTL到期(生产者配置)
+
+>a、队列TTL设置，在spring配置文件内配置rabbit:queue标签的子标签rabbit:queue-arguments 内的子标签entry标签的TTL属性名：key="x-message-ttl"，键值：value="10000"，键值类型：value-type="java.lang.Integer"属性；
+>
+>b、单个内容TTL设置，在实现代码里生成MessagePostProcessor实现类里的postProcessMessage方法使用message.getMessageProperties().setExpiration("5000")设置过期时间；
+
+###### 2）队列长度超过(生产者配置)
+
+>超过队列设置长度的内容会直接进入死信队列，如果没有配置死信队列直接会被丢弃；
+
+###### 3）消费者拒绝消费消息(消费者配置)
+
+> 需消费者ACK设置为手动模式并且basicNack()/basicReject()，并且不把消息重新放回原队列，requeue=false;
+
+![image-20210319112144704](images\rabbitmq-dlx.png)
+
+死信队列消费图
+
+##### 5.3.2功能编写
+
+消费者实现DLX主要是xml配置,代码是正常的消息发送
+
+> 使用队列长度超过的方式来测试，队列在spring配置文件内配置rabbit:queue标签的子标签rabbit:queue-arguments 内的子标签entry标签的key=“x-max-length",键值：value="5"，键值类型：value-type="java.lang.Integer"属性；
+
+```xml
+<!--消息过期时间TTL配置-->
+    <rabbit:queue id="queue_dlx" name="queue_dlx" auto-declare="true">
+        <rabbit:queue-arguments>
+            <entry key="x-message-ttl" value="10000" value-type="java.lang.Integer"/>
+            <entry key="x-max-length" value="5" value-type="java.lang.Integer"/>
+            <!--绑定死信交换机与路由-->
+            <entry key="x-dead-letter-exchange" value="exchange_dlx_dead"/>
+            <entry key="x-dead-letter-routing-key" value="gaodead.news"/>
+        </rabbit:queue-arguments>
+    </rabbit:queue>
+    <rabbit:topic-exchange id="exchange_dlx" name="exchange_dlx" auto-declare="true">
+        <rabbit:bindings>
+            <!--pattern路由key,queue队列名-->
+            <rabbit:binding pattern="gao.#" queue="queue_dlx"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
+    <!--设置死信路由及交换机-->
+    <rabbit:queue id="queue_dlx_dead" name="queue_dlx_dead" auto-declare="true"/>
+    <rabbit:topic-exchange id="exchange_dlx_dead" name="exchange_dlx_dead"
+                           auto-declare="true">
+        <rabbit:bindings>
+            <rabbit:binding pattern="gaodead.#" queue="queue_dlx_dead"/>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
+```
+
+消费者实现DLX主要是代码实现
+
+```java
+@Component
+public class ConsmuerDLXLister implements ChannelAwareMessageListener {
+    int i=0;
+    @Override
+    public void onMessage(Message message, Channel channel) throws Exception {
+
+        long deliveryTag = message.getMessageProperties().getDeliveryTag();
+        try{
+            if(i==5){
+                int t=3/0;
+            }else{
+                channel.basicAck(deliveryTag,true);
+                i++;
+            }
+        }catch (Exception e){
+            //报错代码不再重回队列
+            channel.basicNack(deliveryTag,true,false);
+        }
+    }
+}
+```
+
+#### 5.4延时队列
+
+RabbbitMQ没有提供直接的队列延时的方法，但是可以使用TTL及死信队列相结合的方式来实现延时队列的。
+
+> 使用场景用户在下单时消息中心会创建一个TTL例如为30分钟后过期的消息，当TTL时间到达时消息进入私信队列DLX，当订单中心收到死信队列消息后进行订单状态判断，如果没有支付就进行数据回滚操作，如果支付了就不做处理。
+
+#### 5.5消息追踪
+
+Rabbit中可以使用Firehose或者rabbitmq_tracing插件功能来实现消息追踪。
+
+>Firehose是将生产者投递给rabbitmq的消息，按指定的格式发送给默认的exchange上，默认的exchange是amq.rabbitmq.trace，他是一个topic类型的exchange。发到此exchange上消息的routing key为publish.exchangename 和deliver.queuename。exchangename 与queuename为exchange与queue的实际使用名称，分别对应生产者投递到exchange的消息和消费者从queue上获取的消息。
+
+Firehose使用
+
+```shell
+rabbitmqtcl trace_on 	#开启Firehose命令
+rabbitmqtcl trace_off 	#关闭Firehose命令
+```
+
+开启方法：
+
+1、后台queue栏目里新建一个队列例如：gao_queue_trace
+
+![image-20210319153729776](images\image-20210319153729776.png)
+
+2、将queue与默认的exchange（amq.rabbitmq.trace）进行绑定，如果要绑定所有的路由消息需要在routingkey内填写通配符#,如果要绑定已gao开头的路由信息则需要在routingkey内填写gao#;
+
+![image-20210319153954099](images\image-20210319153954099.png)
+
+rabbitmq_tracing使用
+
+rabbitmq-plugins list查看所有插件
+
+rabbitmq-plugins enable rabbitmq_tracing开启rabbitmq_tracing插件

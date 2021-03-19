@@ -338,7 +338,7 @@ WARNING overcommit_memory is set to 0! Background save may fail under low memory
 方法3： sysctl vm.overcommit_memory=1
 ```
 
-#### 15、docker复制命令
+### 15、docker复制命令
 
 ##### 1)将文件从docker镜像内拷贝到系统文件夹内
 
@@ -356,5 +356,66 @@ docker cp  想要复制的文件 docker镜像名:想要修改的文件的路径
 
 ```shell
 docker cp /data/myredis/redis.conf myredis:/etc/redis/redis.conf
+```
+
+### 16、docker-compose
+
+#### 16.1安装
+
+Dockerfile 用来构建 Docker 镜像，那么 docker-compose 则是用来创建容器的。
+
+> Docker 有三个主要的功能：Build、Ship 和 Run，使用 docker-compose 可以帮我们在 Run 的层面解决很多实际问题。docker-compose 通过一个 yaml 模板文件来统一管理多个容器的配置，如网络、数据卷、执行指令、环境变量、资源限制等等。有了 docker-compose 我们便可以一键重启、关闭、删除、监控所有的 docker 服务，只需要一次配置，则可以对容器进行统一管理，那么此时我们则不必为了每次要运行一堆容器时写大量的命令而头疼。
+
+```shell
+#//运行以下命令以下载Docker Compose的当前稳定版本
+curl -L https://get.daocloud.io/docker/compose/releases/download/1.28.5/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+#//将可执行权限应用于二进制文件
+chmod +x /usr/local/bin/docker-compose
+```
+
+> **注意**：如果`docker-compose`安装后命令失败，请检查路径。您还可以创建指向`/usr/bin`或路径中任何其他目录的符号链接。
+
+```shell
+sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+```
+
+> 可选安装支持shell版本compose
+
+```shell
+sudo curl \
+    -L https://raw.githubusercontent.com/docker/compose/1.28.5/contrib/completion/bash/docker-compose \
+    -o /etc/bash_completion.d/docker-compose
+```
+
+>安装后进行功能测试
+
+```shell
+docker-compose --version
+```
+
+#### 16.2更新
+
+```shell
+docker-compose migrate-to-labels
+```
+
+如果您担心保留它们，可以将其删除。
+
+```shell
+docker container rm -f -v myapp_web_1 myapp_db_1 ...
+```
+
+#### 16.3卸载
+
+使用`curl`命令进行安装，卸载`Docker Compose` ：
+
+```shell
+sudo rm /usr/local/bin/docker-compose
+```
+
+使用`pip`命令进行安装，卸载`Docker Compose` ：
+
+```shell
+pip uninstall docker-compose
 ```
 
