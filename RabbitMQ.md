@@ -126,6 +126,150 @@ docker run -d --name gaorabbit --hostname myRabbit -p 5672:5672 -p 15672:15672 -
 docker exec -it gaorabbit rabbitmq-plugins enable rabbitmq_management
 ```
 
+##### 3.3 componse安装
+
+###### 3.3.1单机docker-compose.yml文件
+
+```yaml
+version: "3.8"
+services:
+  #节点1名称
+  gaorabbitmq: 
+    #构建镜像,如果build开启需要手动指定Dockerfile文件
+    #会报错unable to prepare context: unable to evaluate symlinks in Dockerfile path: lstat /data/ymlWorld/Dockerfile: no such file or directory
+    #build: .
+    image: rabbitmq:3.8.14-management
+    hostname: gaorabbit1
+    #容器名称
+    container_name: gaorabbitmq1
+    #总是重启后启动
+    restart: always
+    #端口映射
+    ports:
+    - 4369:4369
+    - 5671:5671
+    - 5672:5672
+    - 15691:15691
+    - 15692:15692
+    - 15671:15671
+    - 15672:15672
+    #环境变量
+    environment:
+    - RABBITMQ_DEFAULT_VHOST=/
+    - RABBITMQ_DEFAULT_USER=admin
+    - RABBITMQ_DEFAULT_PASS=Ab00859567c!
+    #挂载
+    volumes:
+    #- /data/rabbitMQ/rabbitmq/rmq_rabbitmq1:/etc/rabbitmq
+    - /data/rabbitMQ/lib/rmq_lib1:/var/lib/rabbitmq
+    - /data/rabbitMQ/log/rmq_log1:/var/log/rabbitmq
+    privileged: true
+```
+
+###### 3.3.2集群docker-compose.yml文件
+
+```yaml
+version: "3.8"
+services:
+  gaorabbitmq1: 
+    image: rabbitmq:3.8.14-management
+    hostname: gaorabbitmq1
+    #容器名称
+    container_name: gaorabbitmq1
+    #总是重启后启动
+    restart: always
+    #端口映射
+    ports:
+    - 5672:5672
+    - 15672:15672
+    #环境变量
+    environment:
+    #注意：多机配置集群时在挂载参数中，必须加上“- /etc/hosts:/etc/hosts”，否则集群无法成功会报“Error: unable TO perform an operat
+ion ON node 'rabbit@rabbitmq1'. Please see diagnostics information AND suggestions below.”
+    #- /etc/hosts:/etc/hosts
+    #- RABBITMQ_ERLANG_COOKIE=rabbitcookie
+    - RABBITMQ_DEFAULT_USER=admin
+    - RABBITMQ_DEFAULT_PASS=Ab00859567c!
+    #挂载
+    volumes:
+    - /data/rabbitMQ/lib/rmq_lib1:/var/lib/rabbitmq
+    - /data/rabbitMQ/log/rmq_log1:/var/log/rabbitmq
+    - /data/rabbitMQ/shell/gaorabbit1.sh:/etc/rabbitmq/rabbitmq.sh
+  gaorabbitmq2: 
+    image: rabbitmq:3.8.14-management
+    hostname: gaorabbitmq2
+    #容器名称
+    container_name: gaorabbitmq2
+    #总是重启后启动
+    restart: always
+    #端口映射
+    ports:
+    - 5673:5672
+    - 15673:15672
+    #环境变量
+    environment:
+    #注意：多机配置集群时在挂载参数中，必须加上“- /etc/hosts:/etc/hosts”，否则集群无法成功会报“Error: unable TO perform an operat
+ion ON node 'rabbit@rabbitmq1'. Please see diagnostics information AND suggestions below.”
+    #- /etc/hosts:/etc/hosts
+    #- RABBITMQ_ERLANG_COOKIE=rabbitcookie
+    - RABBITMQ_DEFAULT_USER=admin
+    - RABBITMQ_DEFAULT_PASS=Ab00859567c!
+    #links:
+    #- gaorabbitmq1
+    #挂载
+    volumes:
+    - /data/rabbitMQ/lib/rmq_lib2:/var/lib/rabbitmq
+    - /data/rabbitMQ/log/rmq_log2:/var/log/rabbitmq
+    - /data/rabbitMQ/shell/gaorabbit2.sh:/etc/rabbitmq/rabbitmq.sh
+```
+
+###### 3.3.3启动MQ
+
+###### 3.3.3.1单机docker-compose.yml启动
+
+```shell
+docker-compose up -d
+#指定yml文件
+docker-compose -f docker-compose.yml up -d
+```
+
+###### 3.3.3.2集群docker-compose.yml启动
+
+```shell
+docker-compose up -d
+#指定yml文件
+docker-compose -f docker-compose.yml up -d
+```
+
+> 从主节点拷贝.erlang.cookie到从节点,从节点获取到cookie后需要使用docker restart gaorabbitmq2重启下从节点镜像，否则会报错cookie值不对。
+
+```shell
+#将主节点的.erlang.cookie拷贝到主机
+docker cp gaorabbitmq1:/var/lib/rabbitmq/.erlang.cookie /data/rabbitMQ/.erlang.cookie
+#再从主机将.erlang.cookie拷贝到从节点
+docker cp /data/rabbitMQ/.erlang.cookie gaorabbitmq2:/var/lib/rabbitmq/.erlang.cookie
+```
+
+> 主节点启动rabbitmq节点容器(gaorabbit1.sh)
+
+```shell
+#通过docker exec进入主节点
+docker exec -it gaorabbitmq1 /bin/bash
+rabbitmqctl stop_app
+rabbitmqctl reset
+rabbitmqctl start_app
+```
+
+> 从节点启动rabbitmq节点容器(gaorabbit2.sh)
+
+```java
+docker exec -it rabbitmqCluster02 bash
+rabbitmqctl stop_app
+rabbitmqctl reset
+rabbitmqctl join_cluster --ram rabbit@rabbitmq01
+rabbitmqctl start_app
+```
+
 # 二、java代码实现
 
 ### 1、简单模式
@@ -1029,7 +1173,7 @@ Rabbit中可以使用Firehose或者rabbitmq_tracing插件功能来实现消息�
 
 >Firehose是将生产者投递给rabbitmq的消息，按指定的格式发送给默认的exchange上，默认的exchange是amq.rabbitmq.trace，他是一个topic类型的exchange。发到此exchange上消息的routing key为publish.exchangename 和deliver.queuename。exchangename 与queuename为exchange与queue的实际使用名称，分别对应生产者投递到exchange的消息和消费者从queue上获取的消息。
 
-Firehose使用
+> Firehose使用
 
 ```shell
 rabbitmqtcl trace_on 	#开启Firehose命令
@@ -1046,8 +1190,38 @@ rabbitmqtcl trace_off 	#关闭Firehose命令
 
 ![image-20210319153954099](images\image-20210319153954099.png)
 
-rabbitmq_tracing使用
+> rabbitmq_tracing使用
 
+```shell
+#方法一 进入gaorabbit1
+docker exec -it gaorabbitmq1 /bin/bash
 rabbitmq-plugins list查看所有插件
+#开启rabbitmq_tracing插件
+rabbitmq-plugins enable rabbitmq_tracing
+#方法二
+docker exec -it gaorabbitmq1 rabbitmq-plugins enable rabbitmq_tracing
 
-rabbitmq-plugins enable rabbitmq_tracing开启rabbitmq_tracing插件
+#关闭日志跟踪
+docker exec -it gaorabbitmq1 rabbitmq-plugins disable rabbitmq_tracing
+```
+
+#### 5.6镜像队列
+
+在admin的policies里增加一个policy，设置路由Pattern为^全部内容，这样就会将内容自动同步到其他rabbitmq服务器
+
+> web界面设置
+
+![image-20210321142734152](images\image-20210321142734152.png)
+
+> 程序设置
+
+```shell
+rabbitmqctl set_policy Name "^" {"ha-mode":"all"}
+Name:测试略名
+Pattern:正切匹配规则，如匹配所有队列就是^
+definition:使用ha-mode模式中的all,也就是同步所有匹配的队列
+```
+
+结果
+
+![image-20210321143013491](images\image-20210321143013491.png)
