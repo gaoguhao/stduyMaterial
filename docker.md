@@ -419,3 +419,89 @@ sudo rm /usr/local/bin/docker-compose
 pip uninstall docker-compose
 ```
 
+### 17、haProxy配置
+
+#### 17.1配置pull方法配置haproxy（方法一）
+
+> haproxy通过pull拉取
+
+```shell
+docker pull haproxy:1.8.29
+```
+
+> haproxy.cfg文件
+
+```
+#logging options
+global
+        log 127.0.0.1 local0 info
+        maxconn 5120
+        chroot /usr/local/etc/haproxy
+        uid 99
+        gid 99
+        daemon
+        quiet
+        nbproc 20
+        pidfile /var/run/haproxy.pid
+defaults
+        log global
+        mode tcp
+        option tcplog
+        option dontlognull
+        retries 3
+        option redispatch
+        maxconn 2000
+        contimeout 5s
+		clitimeout 60s
+		srvtimeout 15s
+#front-end IP for consumers and producters
+#rabbitmq负责均衡
+listen rabbitmq_tcp_cluster
+		#访问的IP和端口(前面ip=0代表任何ip都可访问)
+        bind 0.0.0.0:5674
+		#网络协议
+        mode tcp
+        #balance url_param userid
+        #balance url_param session_id check_post 64
+        #balance hdr(User-Agent)
+        #balance hdr(host)
+        #balance hdr(Host) use_domain_only
+        #balance rdp-cookie
+        #balance leastconn
+        #balance source //ip
+        #负载均衡算法（轮询算法）
+        #轮询算法：roundrobin
+        #权重算法：static-rr
+        #最少连接算法：leastconn
+        #请求源IP算法：source
+        balance roundrobin
+        server node1 127.0.0.1:5672 check inter 5000 rise 2 fall 2
+        server node2 127.0.0.1:5673 check inter 5000 rise 2 fall 2
+#监控界面
+listen stats
+        #监控界面的访问的IP和端口
+        bind 0.0.0.0:8100
+        #访问协议
+        mode http
+        #日志格式
+        option httplog
+        stats enable
+        #URI相对地址
+        stats uri /gaoggrmq
+        stats refresh 5s
+```
+
+#### 17.2Dockerfile方法配置haproxy（方法二）
+
+```dockerfile
+FROM haproxy:1.8.29
+COPY conf/haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
+RUN chmod -R 755 /usr/local/etc/haproxy/haproxy.cfg
+```
+
+> 启动
+
+```shell
+docker run --restart=always -itd --name gaohaproxy -p 8100:8100 -v /data/haProxy/conf/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg -v /data/haProxy/lib_haproxy:/var/lib/haproxy haproxy:1.8.29
+```
+

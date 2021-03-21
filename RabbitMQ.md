@@ -189,7 +189,7 @@ ion ON node 'rabbit@rabbitmq1'. Please see diagnostics information AND suggestio
     #- /etc/hosts:/etc/hosts
     #- RABBITMQ_ERLANG_COOKIE=rabbitcookie
     - RABBITMQ_DEFAULT_USER=admin
-    - RABBITMQ_DEFAULT_PASS=Ab00859567c!
+    - RABBITMQ_DEFAULT_PASS=passwd
     #挂载
     volumes:
     - /data/rabbitMQ/lib/rmq_lib1:/var/lib/rabbitmq
@@ -213,7 +213,7 @@ ion ON node 'rabbit@rabbitmq1'. Please see diagnostics information AND suggestio
     #- /etc/hosts:/etc/hosts
     #- RABBITMQ_ERLANG_COOKIE=rabbitcookie
     - RABBITMQ_DEFAULT_USER=admin
-    - RABBITMQ_DEFAULT_PASS=Ab00859567c!
+    - RABBITMQ_DEFAULT_PASS=passwd
     #links:
     #- gaorabbitmq1
     #挂载
