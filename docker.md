@@ -115,7 +115,7 @@ mysql启动：将本地的13306端口配置给镜像的3306
 --privileged=true：	让容器内的root有真正的root权限，否则容器内的root只有外部普通用户权限
 
 ```shell
-docker run --restart=always -itd --name mysql-spring -p 13306:3306 -e MYSQL_ROOT_PASSWORD=Ab00859567c! mysql:5.7
+docker run --restart=always -itd --name mysql-spring -p 13306:3306 -e MYSQL_ROOT_PASSWORD=a mysql:5.7
 ```
 
 在运行docker容器时可以加如下参数来保证每次docker服务重启后容器也自动重启：
@@ -194,13 +194,13 @@ docker pull mysql:5.7
 docker run --restart=always -it --name 镜像的名字 （-p 指定端口）镜像名:tag(版本信息)
 
 ```shell
-docker run --restart=always -itd --name mysql-spring -p 13306:3306 -e MYSQL_ROOT_PASSWORD=Ab00859567c! mysql:5.7
+docker run --restart=always -itd --name mysql-spring -p 13306:3306 -e MYSQL_ROOT_PASSWORD=a mysql:5.7
 ```
 
 3、访问
 
 ```mysql
-mysql -h ip:13306 -uroot -pAb00859567c! 
+mysql -h ip:13306 -uroot -pa 
 ```
 
 -h 填写ip

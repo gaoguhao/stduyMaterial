@@ -351,10 +351,10 @@ JPA测试实现使用的是hirbernate所以要调用
         -->
         <properties>
             <property name="javax.persistence.jdbc.user" value="root"/>
-            <property name="javax.persistence.jdbc.password" value="Ab00859567c!"/>
+            <property name="javax.persistence.jdbc.password" value="a"/>
             <property name="javax.persistence.jdbc.driver" value="com.mysql.jdbc.Driver"/>
             <property name="javax.persistence.jdbc.url"
-                      value="jdbc:mysql://152.136.116.40:3506/mssstudy"/>
+                      value="jdbc:mysql://152.136.116.140:3506/mssstudy"/>
             <!--
             可选配置：配置jpa实现的配置信息
             是否显示sql: hibernate.show_sql, false|true
@@ -1242,6 +1242,8 @@ FetchType.EAGER	:	多对多时默认是立即加载；
 
 ![image-20210222144547222](images\image-20210222144547222.png)
 
+idea通过
+
 ### 6.1.1spring boot集成rabbitMQ
 
 #### 6.1.1.1、生产者项目
@@ -1364,3 +1366,8 @@ public class MyListener {
     }
 }
 ```
+
+## 7.spring Cloud
+
+
+

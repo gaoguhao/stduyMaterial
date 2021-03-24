@@ -157,7 +157,7 @@ services:
     environment:
     - RABBITMQ_DEFAULT_VHOST=/
     - RABBITMQ_DEFAULT_USER=admin
-    - RABBITMQ_DEFAULT_PASS=Ab00859567c!
+    - RABBITMQ_DEFAULT_PASS=a
     #挂载
     volumes:
     #- /data/rabbitMQ/rabbitmq/rmq_rabbitmq1:/etc/rabbitmq
@@ -293,7 +293,7 @@ public class ConnectionUtil {
     private static String HostName="1.15.71.35";
     private static Integer QueuePort=5672;
     private static String QueueName="admin";
-    private static String QueuePasswd="Ab00859567c!";
+    private static String QueuePasswd="a";
     private static String QueueVHost="/gaoggVhost";
 
     public static Connection getConnection() throws IOException, TimeoutException {
