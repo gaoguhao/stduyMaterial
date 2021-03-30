@@ -1242,13 +1242,140 @@ FetchType.EAGER	:	多对多时默认是立即加载；
 
 ![image-20210222144547222](images\image-20210222144547222.png)
 
-idea通过
+### 6.1SpringBoot项目
 
-### 6.1.1spring boot集成rabbitMQ
+#### 6.1.1创建项目引导类
 
-#### 6.1.1.1、生产者项目
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import tk.mybatis.spring.annotation.MapperScan;
+/**
+ * 继承SpringBootConfiguration，EnableAutoConfiguration，ComponentScan
+ * SpringBootConfiguration继承了spring的configuration注解，声明注解的此类为配置类，spring容器会在这里寻找bean配置初始化的参数
+ * EnableAutoConfiguration自动配置，猜测你要用做什么开发，如你在pom里面导入spring-boot-starter-web包，他对自动给你导入相应的web工程必备包，减去了自己导入包的麻烦
+ * ComponentScan可以配置注解扫描的包
+ */
+@SpringBootApplication
+//扫描mapper包，这边使用的是通用mybatis包
+@MapperScan(value = "com.gaogg.mapper")
+public class UserServiceDemo {
+    public static void main(String[] args) {
+        SpringApplication.run(UserServiceDemo.class, args);
+    }
+}
+```
 
-##### 6.1.1.1.1、pox.xml内配置依赖脚手架
+#### 6.1.2application.yml配置
+
+```yaml
+server:
+  port: 9091
+spring:
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/springcloud
+    username: root
+    password: root
+mybatis:
+  type-aliases-package: com.gaogg.pojo
+```
+
+#### 6.1.3mapper类及用户类配置
+
+> pojo类：
+
+```java
+import lombok.Data;
+import tk.mybatis.mapper.annotation.KeySql;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import java.util.Date;
+@Data
+@Table(name = "tb_user")
+public class User{
+    // id
+    @Id
+    //开启主键自动回填
+    @KeySql(useGeneratedKeys = true)
+    private Long id;
+    // 用户名
+    private String userName;
+    // 密码
+    private String password;
+    // 姓名
+    private String name;
+    // 年龄
+    private Integer age;
+    // 性别，1男性，2女性
+    private Integer sex;
+    // 出生日期
+    private Date birthday;
+    // 创建时间
+    private Date created;
+    // 更新时间
+    private Date updated;
+    // 备注
+    private String note;
+}
+```
+
+> mapper文件
+
+```java
+public interface UserMapper extends Mapper<User> {}
+```
+
+> service方法
+
+```java
+import com.gaogg.mapper.UserMapper;
+import com.gaogg.pojo.User;
+import com.gaogg.service.SelectById;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+public class SelectByIdImpl implements SelectById {
+    @Autowired
+    UserMapper userMapper;
+    @Override
+    /**
+     * 根据主键查询用户
+     * @param id 用户名
+     * @return  用户数据
+     */
+    public User selectUserById(long id) {
+        return userMapper.selectByPrimaryKey(id);
+    }
+}
+```
+
+> collocet方法
+
+```java
+@RestController
+@RequestMapping(method = RequestMethod.GET,value = "/user")
+public class UserColloter {
+    @Autowired
+    private SelectByIdImpl selectById;
+    @RequestMapping(value = "/selectId")
+   // @RequestMapping(value = "/selectId/{id}")
+    //使用PathVariable获取路径变量id
+    //public User selectUserById(@PathVariable Long id)
+    public User selectUserById(@RequestParam("userId") Long id) {
+        User user = selectById.selectUserById(id);
+        System.out.println(user);
+        return user;
+    }
+}
+```
+
+### 6.2.1spring boot集成rabbitMQ
+
+#### 6.2.1.1、生产者项目
+
+##### 6.2.1.1.1、pox.xml内配置依赖脚手架
 
 ```xml
 <dependency>
@@ -1257,7 +1384,7 @@ idea通过
 </dependency>
 ```
 
-##### 6.1.1.1.2、application.yml RabbitMQ信息配置
+##### 6.2.1.1.2、application.yml RabbitMQ信息配置
 
 ```yaml
 spring:
@@ -1269,7 +1396,7 @@ spring:
     virtual-host: 虚拟机名
 ```
 
-##### 6.1.1.1.3、创建rabbitmq配置方法类
+##### 6.2.1.1.3、创建rabbitmq配置方法类
 
 ```java
 @Configuration
@@ -1305,7 +1432,7 @@ public class RabbitMQConfig {
 }
 ```
 
-##### 6.1.1.1.4、编写测试方法
+##### 6.2.1.1.4、编写测试方法
 
 ```java
 @SpringBootTest
@@ -1327,9 +1454,9 @@ public class DemoApplicationTests {
 }
 ```
 
-#### 6.1.1.2、消费者项目
+#### 6.2.1.2、消费者项目
 
-##### 6.1.1.2.1、pox.xml内配置依赖脚手架
+##### 6.2.1.2.1、pox.xml内配置依赖脚手架
 
 ```xml
 <dependency>
@@ -1338,7 +1465,7 @@ public class DemoApplicationTests {
 </dependency>
 ```
 
-##### 6.1.1.2.2、application.yml RabbitMQ信息配置
+##### 6.2.1.2.2、application.yml RabbitMQ信息配置
 
 ```yaml
 spring:
@@ -1350,7 +1477,7 @@ spring:
     virtual-host: 虚拟机名
 ```
 
-##### 6.1.1.2.3、创建rabbitmq消费者方法
+##### 6.2.1.2.3、创建rabbitmq消费者方法
 
 ```java
 @Component
@@ -1369,5 +1496,302 @@ public class MyListener {
 
 ## 7.spring Cloud
 
+### 7.1注册中心Eureka
 
+#### 7.1.1Eureka server创建
+
+##### 1、导入依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-netflix-eureka-server</artifactId>
+</dependency>
+```
+
+##### 2、写配置
+
+###### 单机
+
+``` yaml
+server:
+  #port: 10086从系统中获取变量名为port的值如果没有默认值10086
+  port: ${port:10086}
+spring:
+  application:
+    name: eureka-demo
+eureka:
+  client:
+    service-url:
+      #eureka服务地址,如果集群此处填写其他集群服务器的地址同时配置上/eureka
+      #defaultZone变量名可自己配置
+      #defaultZone: ${defaultZone:http://127.0.0.1:10086/eureka}
+      defaultZone: http://127.0.0.1:10086/eureka
+    #集群状态时需要在eureka后台将本机注册让其他集群服务器看到，并且拉取到
+#    #不拉取服务
+    fetch-registry: false
+#    #eureka将自己注册到eureka注册中心显示出来；
+#    #默认是需要true，集群时就需要显示让其他eureka服务器看到；
+#    #单机时需要改成false不需要。
+    register-with-eureka: false
+  server:
+    #失效剔除时间时间间隔，默认是60秒，此属性单位是毫秒
+    eviction-interval-timer-in-ms:  60000
+    #关闭自我保护模式（默认是打开的）
+    enable-self-preservation: false
+```
+
+###### 多机高可用负载
+
+> application.yaml
+
+``` yaml
+server:
+  #port: 10086从系统中获取变量名为port的值如果没有默认值10086
+  port: ${port:10086}
+spring:
+  application:
+    name: eureka-demo
+eureka:
+  client:
+    service-url:
+      #eureka服务地址,如果集群此处填写其他集群服务器的地址同时配置上/eureka
+      #defaultZone变量名可自己配置
+      defaultZone: ${defaultZone:http://127.0.0.1:10086/eureka}
+```
+
+> idea启动器配置
+>
+> 配置多个eureka启动器，分别指定端口与地址例如
+>
+> -Dport=10087 -DdefaultZone=http://127.0.0.1:10086/eureka
+>
+> -Dport=10086 -DdefaultZone=http://127.0.0.1:10087/eureka
+
+![image-20210330220332947](.\images\image-20210330220332947.png)
+
+##### 3、写启动引导类并添加Eureka注解
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+#Eureka服务注册
+@EnableEurekaServer
+@SpringBootApplication
+public class EurekaDemoApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(EurekaDemoApplication.class, args);
+    }
+}
+```
+
+##### 4、失效剔除及自我保护
+
+此属性为通用属性，单机及多机均可配置
+
+>   server:
+>     #失效剔除时间时间间隔，默认是60秒，此属性单位是毫秒
+>     eviction-interval-timer-in-ms:  60000
+>     #关闭自我保护模式（默认是打开的）
+>     enable-self-preservation: false
+
+> 自我保护解决下图问题
+
+![image-20210330225947924](.\images\image-20210330225947924.png)
+
+##### 5、启动测试
+
+``` shell
+http://127.0.0.1:10086/
+```
+
+#### 7.1.2Eureka client创建
+
+##### 7.1.2.1 Eureka client prodcer
+
+###### 1、导入依赖
+
+```xml
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+```
+
+###### 2、写配置
+
+>默认注册时使用的是主机名或者localhost,如果想用ip进行注册可以在user-service里添加如下配置:
+>    #开启ip地址显示，更倾向ip，不是localhost
+>   eureka:
+>
+>instance:
+>
+>​	prefer-ip-address: true
+>​    #ip地址
+>​    eureka:
+>
+>instance:
+>
+>​	ip-address:  127.0.0.1
+
+> 服务续约:
+>
+> ```
+> eureka:
+>   instance:
+>     #服务失效时间，默认时间为90s，如果再次注册后还没有使用到了设定失效时间后会从eureka内清出，此属性还需配合注册服务器端服务失效剔除时间（eviction-interval-timer-in-ms）配合使用
+>     #要不拒即使服务失效时间到了也不会在注册中心清理
+>     lease-expiration-duration-in-seconds: 10
+>     #服务续约(renew)的间隔时间，默认为30s,如果30s内无人使用会再次注册
+>     lease-renewal-interval-in-seconds: 10
+> ```
+>
+> 
+
+``` yaml
+server:
+  port: 10086
+spring:
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://1.15.71.35:13306/springcloud
+    username: root
+    password: Ab00859567c!
+  #定义项目名
+  application:
+    name: user-service-demo
+mybatis:
+  type-aliases-package: com.gaogg.pojo
+eureka:
+  client:
+    service-url:
+      defaultZone: http://127.0.0.1:10086/eureka
+  instance:
+    #开启ip地址显示，更倾向ip，不是localhost
+    prefer-ip-address: true
+    #ip地址
+    ip-address: 127.0.0.1
+    #服务失效时间，默认时间为90s，如果再次注册后还没有使用到了设定失效时间后会从eureka内清出，此属性还需配合注册服务器端服务失效剔除时间（eviction-interval-timer-in-ms）配合使用
+    #要不拒即使服务失效时间到了也不会在注册中心清理
+    lease-expiration-duration-in-seconds: 10
+    #服务续约(renew)的间隔时间，默认为30s,如果30s内无人使用会再次注册
+    lease-renewal-interval-in-seconds: 10
+```
+
+###### 3、写启动引导类并添加Eureka注解
+
+> 必须使用@EnableDiscoveryClient注解在启动类上开启eureka客户端发现功能
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import tk.mybatis.spring.annotation.MapperScan;
+
+/**
+ * 继承SpringBootConfiguration，EnableAutoConfiguration，ComponentScan
+ * SpringBootConfiguration继承了spring的configuration注解，声明注解的此类为配置类，spring容器会在这里寻找bean配置初始化的参数
+ * EnableAutoConfiguration自动配置，猜测你要用做什么开发，如你在pom里面导入spring-boot-starter-web包，他对自动给你导入相应的web工程必备包，减去了自己导入包的麻烦
+ * ComponentScan可以配置注解扫描的包
+ */
+@SpringBootApplication
+//扫描mapper包，这边使用的是通用mybatis包
+@MapperScan(value = "com.gaogg.mapper")
+//开启eureka客户发现功能
+@EnableDiscoveryClient
+public class UserServiceDemo {
+    public static void main(String[] args) {
+        SpringApplication.run(UserServiceDemo.class, args);
+    }
+}
+```
+
+##### 7.1.2.2 Eureka client Comsumer
+
+###### 1、导入依赖
+
+```xml
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+```
+
+###### 2、写配置
+
+> 配置获取服务列表时间
+>
+> #服务列表获取时间，默认是30s,fetch-registry: true会从eureka服务的列表拉取只读备份，然后缓存到本地，并且按设定的时间去重新拉取并更新数据
+>
+> registry-fetch-interval-seconds: 10
+
+``` yaml
+spring:
+  application:
+    name: consumer-demo
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://127.0.0.1:10086/eureka
+      #服务列表获取时间，默认是30s,拉取服务,默认为true，fetch-registry: true会从eureka服务的列表拉取只读备份，然后缓存到本地，并且按设定的时间去重新拉取并更新数据
+    registry-fetch-interval-seconds: 10
+```
+
+###### 3、写启动引导类并添加Eureka注解
+
+> 必须使用@EnableDiscoveryClient注解在启动类上开启eureka客户端发现功能
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import tk.mybatis.spring.annotation.MapperScan;
+
+/**
+ * 继承SpringBootConfiguration，EnableAutoConfiguration，ComponentScan
+ * SpringBootConfiguration继承了spring的configuration注解，声明注解的此类为配置类，spring容器会在这里寻找bean配置初始化的参数
+ * EnableAutoConfiguration自动配置，猜测你要用做什么开发，如你在pom里面导入spring-boot-starter-web包，他对自动给你导入相应的web工程必备包，减去了自己导入包的麻烦
+ * ComponentScan可以配置注解扫描的包
+ */
+@SpringBootApplication
+//开启eureka客户发现功能
+@EnableDiscoveryClient
+public class ConsumerDemo {
+    public static void main(String[] args) {
+        SpringApplication.run(ConsumerDemo.class, args);
+    }
+
+    @Bean
+    public RestTemplate restTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+###### 4、编写controller方法类
+
+```java
+@RestController
+@RequestMapping(value = "/consumer")
+public class ConsumerController {
+
+    @Autowired
+    private RestTemplate restTemplate;
+    @Autowired
+    private DiscoveryClient discoveryClient;
+    @RequestMapping(value = "/findone")
+    public User selectById(@RequestParam(name="id") Long id){
+        String url="";
+        //通过服务id获取eureke实例
+        List<ServiceInstance> instancesById = discoveryClient.getInstances("user-service-demo");
+        ServiceInstance serviceInstance = instancesById.get(0);
+        url="http://"+serviceInstance.getHost()+":"+serviceInstance.getPort()+"/user/selectId" +
+                "?userId="+id;
+        User forObject = restTemplate.getForObject(url, User.class);
+        return forObject;
+    }
+}
+```
 
