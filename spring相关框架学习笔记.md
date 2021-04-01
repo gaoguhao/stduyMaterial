@@ -1608,7 +1608,7 @@ http://127.0.0.1:10086/
 
 #### 7.1.2Eureka client创建
 
-##### 7.1.2.1 Eureka client prodcer
+##### 7.1.2.1 Eureka client server
 
 ###### 1、导入依赖
 
@@ -1647,11 +1647,12 @@ http://127.0.0.1:10086/
 >     lease-renewal-interval-in-seconds: 10
 > ```
 >
-> 
+
+> 单机
 
 ``` yaml
 server:
-  port: 10086
+  port: 9091
 spring:
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
@@ -1791,6 +1792,411 @@ public class ConsumerController {
                 "?userId="+id;
         User forObject = restTemplate.getForObject(url, User.class);
         return forObject;
+    }
+}
+```
+
+### 7.2 Ribbon负载均衡
+
+#### Eureka client server配置多台服务器
+
+> ribbon具有轮询与随机二种负载均衡策略
+>
+> 默认是轮询策略，可以在客户端springboot配置文件里通过：
+>
+> {服务名}.ribbon.NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule
+>
+> 将轮询修改为随机策略
+
+##### 1、Eureka 服务提供服务器配置多机器负载均衡
+
+> 配置yaml文件
+
+``` yaml
+server:
+  port: ${port:9091}
+spring:
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://XXXXX/springcloud
+    username: root
+    password: root
+  #定义项目名
+  application:
+    name: user-service-demo
+mybatis:
+  type-aliases-package: com.gaogg.pojo
+eureka:
+  client:
+    service-url:
+      defaultZone: http://127.0.0.1:10086/eureka
+  instance:
+    #开启ip地址显示，更倾向ip，不是localhost
+    prefer-ip-address: true
+    #ip地址
+    ip-address: 127.0.0.1
+    #服务失效时间，默认时间为90s，如果再次注册后还没有使用到了设定失效时间后会从eureka内清出，此属性还需配合注册服务器端服务失效剔除时间（eviction-interval-timer-in-ms）配合使用
+    #要不拒即使服务失效时间到了也不会在注册中心清理
+    lease-expiration-duration-in-seconds: 10
+    #服务续约(renew)的间隔时间，默认为30s,如果30s内无人使用会再次注册
+    lease-renewal-interval-in-seconds: 10
+```
+
+> 配置多个启动任务并将端口进行配置
+>
+> 在VM options：-Dport=9091 配置
+
+![image-20210331211133524](.\images\image-20210331211133524.png)
+
+2、Eureka客户端实现ribbon器负载均衡获取业务接口
+
+> 客户端springboot配置yaml,如果需要将轮询修改为随机就需要在次配置
+>
+> {服务名}.ribbon.NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule
+
+```yaml
+spring:
+  application:
+    name: consumer-demo
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://127.0.0.1:10086/eureka
+      #服务列表获取时间，默认是30s,fetch-registry: true会从eureka服务的列表拉取只读备份，然后缓存到本地，并且按设定的时间去重新拉取并更新数据
+    registry-fetch-interval-seconds: 10
+    #拉取服务,默认为true
+    fetch-registry: true
+#将ribbon默认的轮询策略修改为随机策略
+#{服务名}.ribbon.NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule
+#user-service-demo:
+#  ribbon:
+#    NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule
+```
+
+> 客户端springboot启动类里restTemplate方法上配置@LoadBalanced注解
+
+``` java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.EnableLoadTimeWeaving;
+import org.springframework.web.client.RestTemplate;
+@SpringBootApplication
+@EnableDiscoveryClient  //开启eureka客户端发现
+public class ConsumerDemo {
+    public static void main(String[] args) {
+        SpringApplication.run(ConsumerDemo.class, args);
+    }
+    @Bean
+    @LoadBalanced
+    public RestTemplate restTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+> 客户端实现方法里单机服务接口地址获取方法更改为服务名方法获取
+
+``` java
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
+import java.util.List;
+@RestController
+@RequestMapping(value = "/consumer")
+public class ConsumerController {
+    @Autowired
+    private RestTemplate restTemplate;
+    @Autowired
+    private DiscoveryClient discoveryClient;
+    @RequestMapping(value = "/findone")
+    public User selectById(@RequestParam(name="id") Long id){
+        String url="";
+        //使用ribbon 负栽均衡后的地址
+        url="http://user-service-demo//user/selectId?userId="+id;
+        User forObject = restTemplate.getForObject(url, User.class);
+        return forObject;
+    }
+}
+```
+
+### 7.3 Hystrix熔断器
+
+防止因一个服务出现异常时导致整个服务长时间等待从而出现雪崩效应；
+
+#### 1、引入hystrix脚手架
+
+``` xml
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+</dependency>
+```
+
+#### 2、配置熔断策略
+
+``` yaml
+spring:
+  application:
+    name: consumer-demo
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://127.0.0.1:10086/eureka
+      #服务列表获取时间，默认是30s,fetch-registry: true会从eureka服务的列表拉取只读备份，然后缓存到本地，并且按设定的时间去重新拉取并更新数据
+    registry-fetch-interval-seconds: 10
+    #拉取服务,默认为true
+    fetch-registry: true
+#将ribbon默认的轮询策略修改为随机策略
+#{服务名}.ribbon.NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule
+#user-service-demo:
+#  ribbon:
+#    NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RandomRule
+#熔断策略配置
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            #熔断超时设置，默认为1s
+            timeoutInMilliseconds: 2000
+      circuitBreaker:
+        #触发熔断器错误比例罚值，默认值为50%
+        errorThresholdPercentage: 50
+        #熔断后休眠时长，默认值是5s
+        sleepWindowInMilliseconds: 100000
+        #熔断触发最小请求次数，默认值是20
+        requestVolumeThreshold: 30
+```
+
+#### 3、服务降级
+
+> 熔断方法返回类型与实际方法返回类型需一样
+
+客户端springboot启动器里配置@EnableCircuitBreaker开启熔断
+
+>@SpringBootApplication,@EnableDiscoveryClient,@EnableCircuitBreaker等于@SpringCloudApplication配置脚本
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.SpringCloudApplication;
+import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
+import org.springframework.cloud.netflix.hystrix.EnableHystrix;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.EnableLoadTimeWeaving;
+import org.springframework.web.client.RestTemplate;
+//@SpringBootApplication
+//@EnableDiscoveryClient  //开启eureka客户端发现
+//@EnableCircuitBreaker   //开启熔断
+@SpringCloudApplication
+public class ConsumerDemo {
+    public static void main(String[] args) {
+        SpringApplication.run(ConsumerDemo.class, args);
+    }
+
+    @Bean
+    @LoadBalanced
+    public RestTemplate restTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+> 服务降级实现
+
+1、单独指定特定的方法，在需要熔断的方法上添加@HystrixCommand(fallbackMethod = "queryByIdFallback")配置指定方法名为"queryByIdFallback"
+
+```java
+@RestController
+@RequestMapping(value = "/consumer")
+@Slf4j
+public class ConsumerController {
+
+    @Autowired
+    private RestTemplate restTemplate;
+    @Autowired
+    private DiscoveryClient discoveryClient;
+    @RequestMapping(value = "/findone")
+    @HystrixCommand(fallbackMethod = "queryByIdFallback")
+    public String selectById(@RequestParam(name="id") Long id){
+        String url="";
+        //使用ribbon 负栽均衡后的地址
+        url="http://user-service-demo//user/selectId?userId="+id;
+        String forObject = restTemplate.getForObject(url, String.class);
+        log.error("查询id:{}结果为{}",id,forObject);
+        return forObject;
+    }
+    public String queryByIdFallback(@RequestParam(name="id") Long id){
+        log.error("查询失败，查询id:{}",id);
+        return "查询失败，查询id:"+id;
+    }
+}
+```
+
+2、针对整个实现类指定默认的熔断方法，在实现类上配置@DefaultProperties(defaultFallback = "errorFallback")配置指定方法名为"errorFallback",需要熔断的方法上配置@HystrixCommand注解
+
+```java
+@RestController
+@RequestMapping(value = "/consumer")
+@Slf4j
+@DefaultProperties(defaultFallback = "errorFallback")
+public class ConsumerController {
+
+    @Autowired
+    private RestTemplate restTemplate;
+    @Autowired
+    private DiscoveryClient discoveryClient;
+    @RequestMapping(value = "/findone")
+    @HystrixCommand
+    public String selectById(@RequestParam(name="id") Long id){
+        String url="";
+        //使用ribbon 负栽均衡后的地址
+        url="http://user-service-demo//user/selectId?userId="+id;
+        String forObject = restTemplate.getForObject(url, String.class);
+        log.error("查询id:{}结果为{}",id,forObject);
+        return forObject;
+    }
+    public String errorFallback(){
+        log.error("默认：查询失败");
+        return "网络异常";
+    }
+}
+```
+
+#### 4、线程隔离
+
+***熔断器有3种状态：***
+
+1. closed：关闭状态（熔路器关闭），所有请求正常访问；
+2. open：打开状态，所有请求都会降级，hystrix会对请求进行统计，**一定时间内失败请求百分比达到阀值，会触发熔断。默认失败阀值比例是50%,请求次数最少不低于20次。**
+
+3. half open:半开状态。不是永久的，断路器打开后会进入休眠时间（默认是5s）。随后断路器会自动进入半开状态。此时会释放部分请求通过，若请求是健康的，则会关闭熔断器，反之继续保持打开，再次进入休眠倒计时。
+
+> 模拟实现熔断，线程隔离时所有访问均会到默认线程间隔报错处
+
+``` java
+@RestController
+@RequestMapping(value = "/consumer")
+@Slf4j
+@DefaultProperties(defaultFallback = "errorFallback")
+public class ConsumerController {
+
+    @Autowired
+    private RestTemplate restTemplate;
+    @Autowired
+    private DiscoveryClient discoveryClient;
+    @RequestMapping(value = "/findone")
+    @HystrixCommand
+    public String selectById(@RequestParam(name="id") Long id){
+        String url="";
+        //使用ribbon 负栽均衡后的地址
+        url="http://user-service-demo//user/selectId?userId="+id;
+        //熔路器功能模拟实现
+        if(id==1){
+            throw new RuntimeException("太忙了");
+        }
+        String forObject = restTemplate.getForObject(url, String.class);
+        log.error("查询id:{}结果为{}",id,forObject);
+        return forObject;
+    }
+    public String errorFallback(){
+        log.error("默认：查询失败");
+        return "网络异常";
+    }
+}
+```
+
+### 7.4 Feign
+
+#### 1、脚手架引入
+
+``` xml
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+</dependency>
+```
+
+#### 2、启动引导类配置开启Feign客户端发现
+
+```java
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.SpringCloudApplication;
+import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
+import org.springframework.cloud.netflix.hystrix.EnableHystrix;
+import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.EnableLoadTimeWeaving;
+import org.springframework.web.client.RestTemplate;
+//@SpringBootApplication
+//@EnableDiscoveryClient  //开启eureka客户端发现
+//@EnableCircuitBreaker   //开启熔断
+@SpringCloudApplication
+@EnableFeignClients //开启feign客户端发现
+public class ConsumerDemo {
+    public static void main(String[] args) {
+        SpringApplication.run(ConsumerDemo.class, args);
+    }
+    @Bean
+    @LoadBalanced
+    public RestTemplate restTemplate(){
+        return new RestTemplate();
+    }
+}
+```
+
+#### 3、编写Feign接口类，注解成Feign类后框架会自动实现
+
+```java
+import com.gaogg.domain.User;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+//注册成Feign
+@FeignClient("user-service-demo")
+public interface UserClientWithFeign {
+    @GetMapping("user/selectId")
+    User queryByIdWithFeign(@RequestParam(value = "userId") Long id);
+}
+```
+
+#### 4、编写controller
+
+```java
+import com.gaogg.domain.User;
+import com.gaogg.feignclent.UserClientWithFeign;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+@RestController
+@RequestMapping(value = "/cf")
+public class ConsumerFeignController {
+    @Autowired
+    private UserClientWithFeign userClientWithFeign;
+    @GetMapping("/selectId")
+    public String queryByIdWithFeign(@RequestParam(value = "userId") Long id){
+        String queryBack="";
+        try{
+            User user = userClientWithFeign.queryByIdWithFeign(id);
+            queryBack=user.toString(); 
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return queryBack;
     }
 }
 ```
