@@ -2168,7 +2168,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 //注册成Feign
-@FeignClient("user-service-demo")
+@FeignClient(value="user-service-demo")
 public interface UserClientWithFeign {
     @GetMapping("user/selectId")
     User queryByIdWithFeign(@RequestParam(value = "userId") Long id);
@@ -2198,6 +2198,122 @@ public class ConsumerFeignController {
         }
         return queryBack;
     }
+}
+```
+
+#### 5、优化
+
+##### 5.1Feign开启ribbon负载均衡
+
+application.yml里配置
+
+``` yaml
+ribbon:
+  ConnectTimeout: 1000 #链接超时时长
+  ReadTimeout: 5000 #数据通信超时时长
+  MaxAutoRetries: 0 #当前服务器的重试次数
+  MaxAutoRetriesNextServer: 0 #重试多少次服务
+  OkToRetryOnAllOperations: false #是否对所有的请求方式都重试
+```
+
+##### 5.2Feign开启熔断
+
+```yaml
+feign:
+  hystrix:  #开启熔断
+    enabled: true #开启feign的熔断功能
+```
+
+> 设置降级方法类并实现feign方法接口
+
+```java
+import com.gaogg.domain.User;
+import com.gaogg.feignclent.UserClientWithFeign;
+import org.springframework.stereotype.Component;
+@Component
+public class UserClientWithFeignImpl implements UserClientWithFeign {
+    @Override
+    public User queryByIdWithFeign(Long id) {
+        User user=new User();
+        user.setId(id);
+        user.setName("用户异常");
+        return user;
+    }
+}
+```
+
+> feign方法接口内设置fallback属性
+
+```java
+import com.gaogg.config.FeignConfig;
+import com.gaogg.domain.User;
+import com.gaogg.feignclent.Impl.UserClientWithFeignImpl;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+//注册成Feign
+@FeignClient(value = "user-service-demo",fallback = UserClientWithFeignImpl.class)
+public interface UserClientWithFeign {
+    @GetMapping("user/selectId")
+    User queryByIdWithFeign(@RequestParam(value = "userId") Long id);
+}
+```
+
+##### 5.3Feign开启压缩
+
+``` yaml
+feign:
+	compression:  #开启压缩
+    request:
+      enabled: true #开启请求压缩
+      mime-types: text/html,application/xml;application/json  #设置压缩的数据类型
+      min-request-size: 2048  #设置触发压缩的大小下限
+    response:
+      enabled: true #开启回值压缩
+```
+
+##### 5.4Feign开启日志
+
+```yaml
+#日志设置
+logging:
+  level:
+ #   com.gaogg.controller: info  #设置各日志级别
+    com.gaogg: debug
+```
+
+> 设置日志方法类
+
+```java
+import feign.Logger;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class FeignConfig {
+    @Bean
+    Logger.Level feignLonggerLevel(){
+        //记录所有请求和响应的明细日志信息
+        return Logger.Level.FULL;
+    }
+}
+```
+
+> feign方法接口内设置configuration属性
+
+```java
+import com.gaogg.config.FeignConfig;
+import com.gaogg.domain.User;
+import com.gaogg.feignclent.Impl.UserClientWithFeignImpl;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+//注册成Feign
+@FeignClient(value = "user-service-demo",fallback = UserClientWithFeignImpl.class,configuration =
+        FeignConfig.class)
+public interface UserClientWithFeign {
+    @GetMapping("user/selectId")
+    User queryByIdWithFeign(@RequestParam(value = "userId") Long id);
 }
 ```
 
