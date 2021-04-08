@@ -2317,3 +2317,336 @@ public interface UserClientWithFeign {
 }
 ```
 
+### 7.5SpringCloudGateway
+
+#### 1、入门及面向服务的路由
+
+> 面向服务器的路由主要处理就是在yaml配置文件里将写死的路由代理地址改成`lb://+注册中心注册的服务名`
+
+##### 1.1.脚手架导入
+
+```yaml
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+</dependency>
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+```
+
+##### 1.2.配置SpringCloudGateway项目的application.yml文件
+
+```yaml
+server:
+  port: 10010
+spring:
+  application:
+    name: gateway-demo
+  cloud:
+    gateway:
+      enabled: true
+      routes:
+        #routes表示数组，通过- 开头设置
+        #路由id可任意
+        - id: gaogg-gateway-route1
+          #代理服务器直接写死
+          #uri: http://127.0.0.1:8080/consumer-demo
+          #代理服务器通过eureka注册中心获取
+          uri: lb://consumer-demo
+          #路由断言，可匹配映射路径
+          predicates:
+            #将包含/cf的路径路由到lb://consumer-demo
+            - Path=/cf/**
+
+#配置eureka注册中心
+eureka:
+  client:
+    service-url:
+      #指定eureka注册中心地址
+      defaultZone: http://127.0.0.1:10086/eureka
+  instance:
+    #显示ip
+    prefer-ip-address: true
+```
+
+##### 1.3.启动引导类
+
+```java
+package com.gaogg.gateway;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.SpringCloudApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+@SpringBootApplication
+//开启eureka客户端发现
+@EnableDiscoveryClient
+public class GatewayDemo {
+    public static void main(String[] args) {
+        SpringApplication.run(GatewayDemo.class, args);
+    }
+}
+```
+
+#### 2、路由前缀处理
+
+##### 2.1添加前缀
+
+在访问链接的port后面增加前缀/cf，例如：http://127.0.0.1:10010/selectId?userId=4   》》》http://127.0.0.1:10010/cf/selectId?userId=4
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+          predicates:
+            - Path=/**
+          filters:
+            #添加请求路径的前缀
+            - PrefixPath=/cf
+```
+
+##### 2.2去除前缀
+
+在访问链接的port后面去除前缀/cf，例如：
+
+1. StripPrefix=1 http://127.0.0.1:10010/info/cf/selectId?userId=4   》》》http://127.0.0.1:10010/cf/selectId?userId=4
+2. StripPrefix=2 http://127.0.0.1:10010/info//test/cf/selectId?userId=4   》》》http://127.0.0.1:10010/cf/selectId?userId=4
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+          predicates:
+            - Path=/info/**
+          filters:
+            #1表示过滤1个路径，2表示过滤2个路径以此类推
+            - StripPrefix=1
+```
+
+#### 3.过滤器
+
+##### 3.1gateway自带过滤器有几十个，常用的过滤器
+
+| 过滤器名称           | 说明                         |
+| -------------------- | ---------------------------- |
+| AddRequestHeader     | 对匹配上的请求加上Header     |
+| AddRequestParameters | 对匹配上的请求路由添加参数   |
+| AddResponseHeader    | 对从网关返回的响应添加Header |
+| StirpPerfix          | 对匹配上的请求路径去除前缀   |
+| PrefixPath           | 对匹配上的请求路径添加前缀   |
+
+通过ctrl+H调出GatewayFilterFactory这个接口类的实现子类，过滤器实现类都是以GatewayFilterFactory结尾的，其前面字段就是application配置文件里使用的名称。
+
+例如：PrefixPathGatewayFilterFactory在配置里使用名就是PrefixPath
+
+![image-20210408103912524](.\images\image-20210408103912524.png)
+
+##### 3.2过滤器使用，路由内过滤器(局部过滤器)及默认过滤器（全局过滤器）
+
+###### 3.2.1路由内过滤器(局部过滤器)
+
+> 此拦截器只在路由内使用
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+          filters:
+            #添加请求路径的前缀
+            - PrefixPath=/cf
+```
+
+> 效果
+
+> 参考路由前缀处理
+
+> 自定义局部过滤器
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+          filters:
+            #自定义局部过滤器来动态打印变量名为userId的值
+            - GaoggParam=userToken
+```
+
+> 创建GaoggParamGatewayFilterFactory方法类,添加@Component注解解决空过滤器报错,或者在启动引导类里注册@Bean,GaoggParamGatewayFilterFactory
+
+```
+    @Bean
+    public GaoggParamGatewayFilterFactory gaoggParamGatewayFilterFactory(){
+        return new GaoggParamGatewayFilterFactory();
+    }
+```
+
+> <span style="color:red;background:yellow">Caused by: java.lang.IllegalArgumentException: Unable to find GatewayFilterFactory with name GaoggParam</span>
+
+```java
+import org.apache.commons.lang.StringUtils;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.web.server.ServerWebExchange;
+import java.util.Arrays;
+import java.util.List;
+@Component
+public class GaoggParamGatewayFilterFactory extends AbstractGatewayFilterFactory<GaoggParamGatewayFilterFactory.Config> {
+    //此常量的值要与下面Config配置类中的变脸名一致
+    public static final String PARAM_NAME="param";
+    public GaoggParamGatewayFilterFactory() {
+        super(GaoggParamGatewayFilterFactory.Config.class);
+    }
+    public List<String> shortcutFieldOrder() {
+        //我们只有一个名称没有值所以在这边只要将常量PARAM_NAME传下来就行
+        return Arrays.asList(PARAM_NAME);
+    }
+    @Override
+    public GatewayFilter apply(Config config) {
+        return (ServerWebExchange exchange, GatewayFilterChain chain)->{
+            //获取请求参数中param对应的参数名的参数值
+            ServerHttpRequest request = exchange.getRequest();
+//            List<String> strings = request.getQueryParams().get(config.param);
+//            //判断过滤参数(userToken)是否存在，如果存在则返回ture.
+//            boolean b = request.getQueryParams().containsKey(config.param);
+            String first = request.getQueryParams().getFirst(config.param);
+            if(StringUtils.isBlank(first)){
+//                strings.forEach(first->System.out.printf("-------局部过滤器------参数名：%s= ，参数值%s-------",
+//                        config.param,first));
+                //设置响应状态码为未授权
+                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                return exchange.getResponse().setComplete();
+            }
+            return chain.filter(exchange);
+        };
+    }
+    public static class Config{
+        private String param;
+        public String getParam() {return param;}
+        public void setParam(String param) {this.param = param;}
+    }
+}
+```
+
+###### 3.2.2默认过滤器（全局过滤器）
+
+> 默认拦截器对整个项目使用
+
+```yaml
+spring:
+  cloud:
+    gateway:
+      default-filters:
+        #添加响应返回头部过滤器，X-Response-Heade参数名，gaoggGateway参数值
+        - AddResponseHeader=X-Response-Header, gaoggGateway
+```
+
+> 效果
+
+![image-20210408111254178](.\images\image-20210408111254178.png)
+
+> 自定义全局过滤器
+
+全局过滤器不需要配置yaml文件，只需要创建一个过滤类，继承GlobalFilter接口,如果需要增加排序则需要继承 Ordered接口，Ordered的getOrder方法时的回值越小越先执行。
+
+```java
+package com.gaogg.gateway.filter;
+
+import org.apache.commons.lang.StringUtils;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.Ordered;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+@Component
+public class GaoggGlobalFilter implements GlobalFilter, Ordered {
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        System.out.println("-----------全球过滤器----------");
+        String userToken = exchange.getRequest().getQueryParams().getFirst("userTokens");
+        if(StringUtils.isBlank(userToken)){
+            System.out.println("userToken"+", value="+userToken);
+            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+            return exchange.getResponse().setComplete();
+        }
+        return chain.filter(exchange);
+    }
+    @Override
+    public int getOrder() {
+        //值越小越先执行
+        return 1;
+    }
+}
+```
+
+#### 4.其他配置
+
+##### 4.1高可用
+
+起多个gateway服务通过ngnix做负载均衡，提供对外统一访问地址；
+
+##### 4.2负载均衡及熔断参数配置
+
+```yaml
+#熔断器响应时间，超过设置时间没有数据返回时熔断器就给出线程隔离或服务降级处理
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            #熔断超时设置，默认为1s
+            timeoutInMilliseconds: 2000
+      circuitBreaker:
+        #触发熔断器错误比例罚值，默认值为50%
+        errorThresholdPercentage: 50
+        #熔断后休眠时长，默认值是5s
+        sleepWindowInMilliseconds: 100000
+        #熔断触发最小请求次数，默认值是20
+        requestVolumeThreshold: 30
+#负载均衡        
+ribbon:
+  ConnectTimeout: 1000 #链接超时时长
+  ReadTimeout: 5000 #数据通信超时时长
+  MaxAutoRetries: 0 #当前服务器的重试次数
+  MaxAutoRetriesNextServer: 0 #重试多少次服务
+  OkToRetryOnAllOperations: false #是否对所有的请求方式都重试
+```
+
+##### 4.3gateway跨域开启
+
+```yaml
+spring:
+  application:
+    name: gateway-demo
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          #/**表示所有访问到网关的请求
+          '[/**]':
+            #表示所有的来访链接均开启跨域请求
+            allowedOrigins: *
+            #只能http://doc.spring.io地址来的链接开启跨域请求
+#            allowedOrigins:
+#              - 'http://doc.spring.io'
+            #可跨域的访问方式GET与POST,
+            allowedMethods:
+              - GET
+              - POST
+```
+
