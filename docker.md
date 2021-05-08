@@ -1,3 +1,5 @@
+
+
 # docker
 
 ### 1、docker安装
@@ -503,5 +505,469 @@ RUN chmod -R 755 /usr/local/etc/haproxy/haproxy.cfg
 
 ```shell
 docker run --restart=always -itd --name gaohaproxy -p 8100:8100 -v /data/haProxy/conf/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg -v /data/haProxy/lib_haproxy:/var/lib/haproxy haproxy:1.8.29
+```
+
+### 18、ElasticSearch
+
+#### 18.1ElasticSearch
+
+> 安装
+
+```shell
+docker pull elasticsearch:5.6.8
+```
+
+> 启动
+
+<span style="color:red;font-weight: 1000;">-e ES_JAVA_OPTS="-Xms256m -Xmx256m" 设置初始堆内存和最大内存 也可以调整虚拟机内存</span>
+
+```shell
+方法1：docker run --restart=always -itd --name elasticsearch1 -e ES_JAVA_OPTS="-Xms256m -Xmx256m" -p 19200:9200 -p 19300:9300 elasticsearch:5.6.8
+方法2：docker run --restart=always -itd --name elasticsearch1 -p 9200:9200 -p 9300:9300 elasticsearch:5.6.8
+```
+
+> 配置跨域
+
+<span style="color:red;">`将跨域属性添加到elasticsearch.yml文件内`</span>
+
+```yaml
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+```
+
+方法1、安装vim通过vim编辑修改./config/elasticsearch.yml配置文件
+
+```shell
+apt-get update
+apt-get install vim
+```
+
+方法2、
+
+将elasticsearch.yml从项目内cp出来修改后在通过docker cp copy回去
+
+拷贝出：
+
+```shell
+docker cp elasticsearch1:/usr/share/elasticsearch/config/elasticsearch.yml /data/elasticsearch/config/elasticsearch.yml
+```
+
+拷贝回去：
+
+```
+docker cp /data/elasticsearch/config/elasticsearch.yml elasticsearch1:/usr/share/elasticsearch/config/elasticsearch.yml
+```
+
+> 重启容器配置完成
+
+```shell
+docker restart elasticsearch1
+```
+
+#### 18.2ElasticSearch-head
+
+> 安装
+
+```shell
+docker pull mobz/elasticsearch-head:5
+```
+
+> 启动
+
+```shell
+docker run --restart=always -itd --name elasticsearch-head1 -p 19100:9100 mobz/elasticsearch-head:5
+```
+
+> 测试
+
+打开：http://1.15.71.35:19100/地址在链接前输入http://1.15.71.35:19200/连接
+
+![image-20210413134847698](.\images\image-20210413134847698.png)
+
+#### 18.3ElasticSearch概念
+
+elasticSearch是面向文档的，他可以存储整个对象或文档（document）,它不仅是存储，还会索引（index）每一个文档，使之可以被搜索。你可以对文档（非成行成列的数据）进行索引、搜索、排序、过滤。
+
+ElasticSearch与关系型数据库mysql的对比：
+
+|     名称      |      一级区块      |             二级区块             |       三级区块        |       四级区块       |
+| :-----------: | :----------------: | :------------------------------: | :-------------------: | :------------------: |
+|  mysqlserver  |     Databases      |              tables              |   Rows<br/>（记录）   | Columns<br/>（字段） |
+| ElasticSearch | Indices<br/>(索引) | Types<br/>(类型，类似逻辑上的表) | Document<br/>（文档） | Fields<br/>（字段）  |
+
+<strong>Index：</strong>索引的命名必须是小写英文字母+数字的方式构成；我们要对索引中的文档进行增删改查时均需要用到索引名。我们可以创建任意多的索引。
+
+<strong>Type：</strong>一个索引可以有一个或多个类型，一个类型就相当于你索引的一个逻辑分区。
+
+<strong>Mapping：</strong>映射mapping处理数据的方式和规则方面做一些限制，fied字段的属性，意义均是在mapping中进行映射定义。
+
+<strong>Document：</strong>文档是可被索引的基础信息单元。文档是以json格式来表示。一个index/type里可以存储多个文档，<strong style="color:red;">注意：尽管一个文档，物理上是存在于一个index索引之中，文档必须被`索引/赋予`一个索引的type。</strong>
+
+<strong>Field：</strong>字段/域 相当于数据表内的字段属性，对文档document数据根据不同属性进行分类标识。
+
+<strong>接近实时NRT：</strong>ElasticSearch是一个接近实时的搜索平台，从索引一个文档到这个文档被搜索到有一个轻延迟（通常是1秒内）。
+
+<strong>Cluser：</strong>集群，多个节点做成高并发处理。
+
+<strong>Node：</strong>节点，一个节点代表一个集群中的Elasticsearch服务。
+
+<strong>Shard&Replicas：</strong>shard切片将一个索引切分成多分，一分就是一个分片，每个分片本身就是一个功能完善并且独立的index索引，可以理解为分区表。Replicas复制就是将分表的数据备份，防止数因节点损坏而丢失。
+
+#### 18.4ElasticSearch使用
+
+##### 18.4.1索引的创建：
+
+使用http(使用postman工具)的put方法创建索引，创建索引时可加入type，document,field等属性也可不加入直接创建空索引；
+
+```json
+{
+    //mappings关键字，创建有数据索引时需加入
+    "mappings": {
+        //type名
+        "article": {
+            //document名
+            "properties": {
+                //field名
+                "id": {
+                    //类型
+                    "type": "long",
+                    //是否存储
+                    "store": true,
+                    //是否索引，not_analyzed不索引，默认为不索引，可以省略
+                    "index": "not_analyzed"
+                },
+                "name": {
+                    //类型
+                    "type": "text",
+                    //是否存储
+                    "store": true,
+                    //是否索引，analyzed索引
+                    "index": "analyzed",
+                    //分词器，标准分词器，与lucene一样标准分析器对汉字的索引是按字来索引的一个汉字一个索引。
+                    "analyzer": "standard"
+                },
+                "title": {
+                    "type": "text",
+                    "store": true,
+                    "index": "analyzed",
+                    //中文分词器，做最粗颗粒的拆分
+                    "analyzer": "ik_smart"
+                },
+                "contexts": {
+                    "type": "text",
+                    "store": true,
+                    "index": "analyzed",
+                    //中文分词器，做最细颗粒的拆分
+                    "analyzer": "ik_max_word"
+                },
+                "sex": {
+                    "type": "text",
+                    "store": true,
+                    "index": "analyzed",
+                    //分词器，标准分词器，与lucene一样标准分析器对汉字的索引是按字来索引的一个汉字一个索引。
+                    "analyzer": "standard"
+                }
+            }
+        }
+    }
+}
+```
+
+**postman不带参数生成**
+
+![image-20210413205957556](E:\gitTest\images\image-20210413205911448.png)
+
+​		**postman带参数生成**
+
+![image-20210413213840050](.\images\image-20210413213840050.png)
+
+**给以有空白索引里插入type，使用post方式插入，需要在url里加上/索引名+/type名/+_mappings,type名与json串里的type一致**
+
+![image-20210413223638863](.\images\image-20210413223638863.png)
+
+**ElasticSearch-head不带参数生成**
+
+![image-20210413214429587](.\images\image-20210413214429587.png)
+
+**ElasticSearch-head带参数生成**
+
+![image-20210413214820634](.\images\image-20210413214820634.png)
+
+##### 18.4.2删除索引
+
+使用http的delete方法删除索引ElasticSearch地址+索引名
+
+**postman删除：**
+
+![image-20210413214948023](.\images\image-20210413214948023.png)
+
+**elasticsearch-head删除：**
+
+![image-20210413215237681](.\images\image-20210413215237681.png)
+
+##### 18.4.3给type添加文档document
+
+使用post请求给索引里的type添加文档，url需求，url+/索引名+/type名/+id值比需要给第一个id加值这边就是1
+
+图中的_id就对应url里需要填写的id。<strong style="color:red;">建议id与业务主键id（我们定义的field里设置的id属性）一致。</strong>
+
+![image-20210414115835805](.\images\image-20210414115835805.png)
+
+**文档插入时可以不指定id，ElasticSearch会根据算法自动生成id(类似uuid)**
+
+##### 18.4.4删除文档
+
+使用Delete方法进行删除 http://1.15.71.35:19200/urlcreateindex1/addtest/1
+
+使用Delete方法进行删除		ElasticSearchurl	/		index			/type/document_id
+
+##### 18.4.5修改文档值
+
+使用Post方法修改，就是使用添加文档document数据。<strong style="color:red;">ElasticSearch的文档修改与lucene一样都是先删除原有数据再插入新的数据。</strong>
+
+##### 18.4.6查询
+
+###### 1、通过GET方式通过id查询，只能查出一条内容
+
+```shell
+GET http://1.15.71.35:19200/gaoindex1/news/1
+GET elasticSearchUrl/indexName/TypeName/DocumentId
+```
+
+###### 2、条件查询
+
+> 分词器测试两种方式：
+
+`GET 方式直接打开http://1.15.71.35:19200/_analyze?analyzer=ik_max_word&text=程序员`
+
+`post 方式打开http://1.15.71.35:19200/_analyze并在body里配置json串{"analyzer":"ik_smart","text":"程序员"}`
+
+`GET 方式直接打开http://1.15.71.35:19200/_analyze?analyzer=standard&text=程序员`
+
+> 单个查询term查询，post http://1.15.71.35:19200/news/appnews/_search
+
+```json
+{
+    "query":{
+        "term":{
+            "title": "中国"
+        }
+    }
+}
+```
+
+> 词组query_string查询，post http://1.15.71.35:19200/news/appnews/_search
+
+>query_string需要设置默认查询字段default_field，在query后设置查询词组。
+
+```json
+{
+    "query":{
+        "query_string":{
+            "default_field": "title",
+            "query": "中国"
+        }
+    }
+}
+```
+
+##### 18.4.7ElasticSearch ik中文分析器
+
+1. ik分析器分为`ik_smart`//做最粗粒度的拆分与`ik_max_word`//做最细粒度的拆分;
+2. `ik_smart`与`ik_max_word`区别是ik_max_word相对it_smart会分化力度更细致，比如：`ik_smart`会将`程序员`做为一个词组来识别而ik_max_word会将`程序员`拆分成`程序员`、`程序`、`员`3个颗粒；
+
+```shell
+1. docker exec -it elasticSearch1 bash
+2. ./bin/elasticSearch-plugin install https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v5.6.8/elasticsearch-analysis-ik-5.6.8.zip
+或者
+将本地下在的elasticsearch-analysis-ik-5.6.8.zip传到服务器，并unzip -o -d ik elasticsearch-analysis-ik-5.6.8.zip
+docker cp ik elasticSearch1:/usr/share/elasticsearch/plugins/ik
+3. docker restart elasticSearch1
+```
+
+##### 18.4.8ElasticSearch集群
+
+集群yaml配置，使用方法与单机是一样
+
+###### 1、单机多节点部署集群docker-compose.yml配置
+
+```yaml
+version: '3.8'
+services:
+  es01: #服务名称
+    image: elasticsearch:5.6.8 # 使用的镜像
+    container_name: es01 # 容器名称
+    restart: always # 失败自动重启策略
+    environment:
+      - node.name=es01 # 节点名称，集群模式下每个节点名称唯一
+      #- network.publish_host=192.168.81.130 # 用于集群内各机器间通信,对外使用，其他机器访问本机器的es服务，一般为本机宿主机IP
+      - network.host=0.0.0.0 # 设置绑定的ip地址，可以是ipv4或ipv6的，默认为0.0.0.0，即本机
+      #- discovery.seed_hosts=192.168.81.130,192.168.81.131,192.168.81.132
+      #- discovery.seed_hosts=es02 # es7.0之后新增的写法，写入候选主节点的设备地址，在开启服务后，如果master挂了，哪些可以被投票
+选为主节点
+      #- cluster.initial_master_nodes=192.168.81.130,192.168.81.131,192.168.81.132
+      #- cluster.initial_master_nodes=es01,es02 # es7.0之后新增的配置，初始化一个新的集群时需要此配置来选举master
+      - cluster.name=elasticsearch-cluster # 集群名称，相同名称为一个集群， 三个es节点须一致
+      #- http.cors.enabled=true # 是否支持跨域，是：true // 这里设置不起作用，但是可以将此文件映射到宿主机进行修改，然后重启，解
+决跨域
+      #- http.cors.allow-origin="*" # 表示支持所有域名      // 这里设置不起作用，但是可以将此文件映射到宿主机进行修改，然后重启，
+解决跨域
+      - bootstrap.memory_lock=true # 内存交换的选项，官网建议为true。锁定物理内存地址，防止es内存被交换出去，也就是避免es使用swap
+交换分区，频繁的交换，会导致IOPS变高。
+      #- discovery.zen.ping.unicast.hosts= 127.0.0.1:19301,127.0.0.1:19302
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m" # 设置内存，如内存不足，可以尝试调低点
+    ulimits: # 栈内存的上限
+      memlock:
+        soft: -1 # 不限制
+        hard: -1 # 不限制
+    volumes:
+      - /data/elasticsearch/config/es01/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      #- esdata01:/usr/share/elasticsearch/data # 存放数据的文件， 注意：这里的esdata为 顶级volumes下的一项。
+    ports:
+      - 19201:9200 # http端口，可以直接浏览器访问
+      - 19301:9300 # es集群之间相互访问的端口，jar之间就是通过此端口进行tcp协议通信，遵循tcp协议。
+    networks:
+      - esnet
+  es02: # 服务名称
+    image: elasticsearch:5.6.8 # 使用的镜像
+    container_name: es02 # 容器名称
+    restart: always # 失败自动重启策略
+    environment:
+      - node.name=es02 # 节点名称，集群模式下每个节点名称唯一
+      #- network.publish_host=192.168.81.130 # 用于集群内各机器间通信,对外使用，其他机器访问本机器的es服务，一般为本机宿主机IP
+      - network.host=0.0.0.0 # 设置绑定的ip地址，可以是ipv4或ipv6的，默认为0.0.0.0，即本机
+      #- discovery.seed_hosts=192.168.81.130,192.168.81.131,192.168.81.132
+      #- discovery.seed_hosts=es02 # es7.0之后新增的写法，写入候选主节点的设备地址，在开启服务后，如果master挂了，哪些可以被投票
+选为主节点
+      #- cluster.initial_master_nodes=192.168.81.130,192.168.81.131,192.168.81.132
+      #- cluster.initial_master_nodes=es01,es02 # es7.0之后新增的配置，初始化一个新的集群时需要此配置来选举master
+      - cluster.name=elasticsearch-cluster # 集群名称，相同名称为一个集群， 三个es节点须一致
+      #- http.cors.enabled=true # 是否支持跨域，是：true // 这里设置不起作用，但是可以将此文件映射到宿主机进行修改，然后重启，解
+决跨域
+      #- http.cors.allow-origin="*" # 表示支持所有域名      // 这里设置不起作用，但是可以将此文件映射到宿主机进行修改，然后重启，
+解决跨域
+      - bootstrap.memory_lock=true # 内存交换的选项，官网建议为true。锁定物理内存地址，防止es内存被交换出去，也就是避免es使用swap
+交换分区，频繁的交换，会导致IOPS变高。
+      #- discovery.zen.ping.unicast.hosts= 127.0.0.1:19301,127.0.0.1:19302
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m" # 设置内存，如内存不足，可以尝试调低点
+    ulimits: # 栈内存的上限
+      memlock:
+        soft: -1 # 不限制
+        hard: -1 # 不限制
+    volumes:
+      - /data/elasticsearch/config/es02/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      #- esdata02:/usr/share/elasticsearch/data # 存放数据的文件， 注意：这里的esdata为 顶级volumes下的一项。
+    ports:
+      - 19202:9200 # http端口，可以直接浏览器访问
+      - 19302:9300 # es集群之间相互访问的端口，jar之间就是通过此端口进行tcp协议通信，遵循tcp协议。
+    networks:
+      - esnet
+networks:
+  esnet:
+```
+
+###### 2、es01-elasticsearch.yml
+
+> 需将文件的权限设为777或755 `chmod 777 es01-elasticsearch.yml `
+
+```yaml
+#跨域设置
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+#集群
+#集群名每个节点的名都要一样的
+cluster.name: elasticsearch-cluster
+#节点名，每个节点名都不一样
+node.name: es01
+#这个属性表示节点是否具有成为主节点的资格，注意：此属性的值为true，并不意味着这个节点就是主节点。因为真正的主节点，是由多个具有主节点资格的节点进行选举产生的。所以，这个属性只是代表这个节点是不是具有主节点选举资格。
+node.master: true
+#这个属性表示节点是否存储数据。
+node.data: true
+#内存交换的选项，官网建议为true。锁定物理内存地址，防止es内存被交换出去，也就是避免es使用swap交换分区，频繁的交换，会导致IOPS变高。
+bootstrap.memory_lock: true
+#必须为本机的ip地址
+network.host: 0.0.0.0
+#服务器端口
+http.port: 9200
+#集群间通信端口
+transport.tcp.port: 9300
+#设置集群自动发现机器ip集合
+discovery.zen.ping.unicast.hosts: ["es01","es02"]
+#一台服务器只能有2个节点
+discovery.zen.minimum_master_nodes: 2
+```
+
+###### 3、es02-elasticsearch.yml
+
+> 需将文件的权限设为777或755 `chmod 777 es01-elasticsearch.yml `
+
+```yaml
+#跨域设置
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+#集群
+#集群名每个节点的名都要一样的
+cluster.name: elasticsearch-cluster
+#节点名，每个节点名都不一样
+node.name: es02
+#这个属性表示节点是否具有成为主节点的资格，注意：此属性的值为true，并不意味着这个节点就是主节点。因为真正的主节点，是由多个具有主节点资格的节点进行选举产生的。所以，这个属性只是代表这个节点是不是具有主节点选举资格。
+node.master: true
+#这个属性表示节点是否存储数据。
+node.data: true
+#内存交换的选项，官网建议为true。锁定物理内存地址，防止es内存被交换出去，也就是避免es使用swap交换分区，频繁的交换，会导致IOPS变高。
+bootstrap.memory_lock: true
+#必须为本机的ip地址
+network.host: 0.0.0.0
+#服务器端口
+http.port: 9200
+#集群间通信端口
+transport.tcp.port: 9300
+#设置集群自动发现机器ip集合
+discovery.zen.ping.unicast.hosts: ["es01","es02"]
+#一台服务器只能有2个节点
+discovery.zen.minimum_master_nodes: 2
+```
+
+> 文件编辑好后执行docker-compose up -d 生成节点；
+>
+> 检查集群状态：`curl http://127.0.0.1:9200/_cat/health`
+
+> 节点正常显示
+
+``` html
+1618980399 04:46:39 elasticsearch-cluster green 2 2 0 0 0 0 0 0 - 100.0%
+```
+
+###### 4、集群过成中报错解决
+
+> 报错1:
+
+``` java
+bootstrap checks failed max virtual memory areas vm.max_map_count [65530] likely too low, increase to at least [262144]
+```
+
+> 解决方法：
+
+``` shell
+本机系统中：
+vim /etc/sysctl.conf
+在sysctl.conf中加入 vm.max_map_count=262144 
+使其生效：sysctl -p
+```
+
+> 报错2:
+
+``` java
+bootstrap checks failed  max file descriptors [4096] for elasticsearch process is too low, increase to at least [65536]
+```
+
+> 解决方法：
+
+``` shell
+本机系统中：
+编辑 /etc/security/limits.conf，追加以下内容；
+* soft nofile 65536
+* hard nofile 65536
+此文件修改后需要重新登录用户，才会生效
 ```
 

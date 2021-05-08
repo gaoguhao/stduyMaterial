@@ -2640,7 +2640,7 @@ spring:
           #/**表示所有访问到网关的请求
           '[/**]':
             #表示所有的来访链接均开启跨域请求
-            allowedOrigins: *
+            allowedOrigins: '*'
             #只能http://doc.spring.io地址来的链接开启跨域请求
 #            allowedOrigins:
 #              - 'http://doc.spring.io'
@@ -2649,4 +2649,490 @@ spring:
               - GET
               - POST
 ```
+
+##### 4.4Gateway与Feign区别
+
+> Gateway网关一般对外部提供服务，让外部终端进行请求使用；
+
+> Feign一般是微服务内部请求调用；
+
+### 7.6SpringCloud配置中心
+
+远程服务器设置https://github.com/gaoguhao/GaoggSpringCloudStudy.git
+
+配置文件命名规则是：#{application}-#{profile}.yml,其对应到yaml应用服务器里springcloud的配置字段name,profile。`userserver-dev.yml,userserver为application，dev为profile，中间用-隔离开。`
+
+#### 1.config-server搭建配置中心
+
+> 脚手架导入
+
+```yaml
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-config-server</artifactId>
+</dependency>
+<dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+</dependency>
+```
+
+> application配置
+
+```yml
+#服务端口
+server:
+  port: ${port:12000}
+#git地址配置
+spring:
+  application:
+    name: config-server-demo
+  cloud:
+    config:
+      server:
+    #bootstrap: true
+        #设置git服务器地址
+        git:
+          uri: https://gitee.com/gaoguhao/gaogg-spring-cloud-study.git
+          username: user
+          password: passwd
+#eureka注册中心设置
+eureka:
+  client:
+    service-url:
+      defaultZone: http://127.0.0.1:10086/eureka
+```
+
+> 启动引导内配置@EnableConfigServer开启配置服务
+
+#### 2.user-server-demo配置
+
+> user-server-demo删除本起application.yml配置bootstrap.yml
+
+```yaml
+spring:
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://1.15.71.35:13306/springcloud
+    username: root
+    password: root
+  cloud:
+    config:
+      # 要与仓库中的配置文件的application保持一致
+      name: userservice
+      # 要与仓库中的配置文件的profile保持一致
+      profile: dev
+      # 要与仓库中的配置文件所属的版本（分支）一样
+      label: master
+      discovery:
+        # 使用配置中心
+        enabled: true
+        # 配置中心服务名,就是config服务注册名
+        service-id: config-server-demo
+#配置eureka注册中心
+eureka:
+  client:
+    service-url:
+      defaultZone: http://127.0.0.1:10086/eureka
+```
+
+### 7.7 SpringCloud Bus
+
+不重启服务器的情况下实时的获取到远程git服务器内yml文件的更新.
+
+#### 7.7.1、config-server配置
+
+1、依赖包导入
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-bus</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-stream-binder-rabbit</artifactId>
+</dependency>
+```
+
+2、application.yml文件配置，配置rabbitmq及总线线程暴露
+
+```yml
+spring:
+  rabbitmq:
+    host: 1.15.71.35
+    port: 15672
+    username: admin
+    password: admin
+management:
+  endpoints:
+    web:
+      exposure:
+        #暴露触发消息总线的地址
+        include: bus-refresh
+```
+
+#### 7.7.2usersevice服务器配置
+
+1、脚手架导入，依赖包配置
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-bus</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-stream-binder-rabbit</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-actuator</artifactId>
+</dependency>
+```
+
+2、application.yaml配置
+
+```yaml
+  rabbitmq:
+    host: 1.15.71.35
+    port: 15672
+    username: admin
+    password: admin
+```
+
+3、对外提供服务的类上添加@RefreshScope注解刷新配置，rabbitmq总线刷新后service服务也进行刷新。
+
+#### 7.7.3git更新后手动的刷新总线
+
+post请求，application/json方式请求http://127.0.0.1:12000/actuator/bus-refresh地址进行刷新。
+
+`/actuator固定地址`，`bus-refresh`为config服务器内配置的暴露总线线程名。
+
+## 8.ElasticSearch
+
+### 8.1 SpringData-ElasticSearch
+
+#### 8.1.1SpringData-ElasticSearch创建
+
+#### 1、配置文件
+
+> pox.xml
+
+```xml
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <elasticsearch.version>5.6.8</elasticsearch.version>
+        <log4j.version>2.9.1</log4j.version>
+        <slf4j.version>1.7.24</slf4j.version>
+        <junit.version>4.12</junit.version>
+        <jackson.version>2.9.6</jackson.version>
+        <springdata.es.version>3.0.5.RELEASE</springdata.es.version>
+        <spingtest.version>5.0.4.RELEASE</spingtest.version>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.elasticsearch</groupId>
+            <artifactId>elasticsearch</artifactId>
+            <version>${elasticsearch.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>transport</artifactId>
+            <version>${elasticsearch.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-to-slf4j</artifactId>
+            <version>${log4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.12</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-elasticsearch</artifactId>
+            <version>${springdata.es.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.elasticsearch.plugin</groupId>
+                    <artifactId>transport-netty4-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <version>${spingtest.version}</version>
+        </dependency>
+    </dependencies>
+```
+
+> applicationContext.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:elasticsearch="http://www.springframework.org/schema/data/elasticsearch"
+       xsi:schemaLocation="
+		http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/data/elasticsearch
+		http://www.springframework.org/schema/data/elasticsearch/spring-elasticsearch-1.0.xsd
+		">
+    <!--elastic客户对象的配置,client-transport-sniff使客户端去嗅探整个集群的状态,默认开启状态-->
+    <elasticsearch:transport-client id="esClient" cluster-name="elasticsearch-cluster" cluster-nodes="1.15.71.35:19301,1.15.71.35:19302" client-transport-sniff="false"/>
+    <!--配置包扫描器,扫描dao的接口-->
+    <elasticsearch:repositories base-package="com.gaogg.es.repositories"/>
+    <!--配置Elasticsearch模板对象-->
+    <bean id="elasticsearchTemplate" class="org.springframework.data.elasticsearch.core.ElasticsearchTemplate">
+        <constructor-arg name="client" ref="esClient"/>
+    </bean>
+</beans>
+```
+
+#### 2、方法类的创建
+
+> pojo类(domain)创建
+
+```java
+package com.gaogg.es.pojo;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Field;
+import org.springframework.data.elasticsearch.annotations.FieldType;
+
+@Document(indexName = "index-spring",type = "newer")
+public class Newer {
+    @Id
+    @Field(type = FieldType.Long,store = true,analyzer = "standard")
+    private long id;
+
+    @Field(type = FieldType.text,store = true,analyzer = "ik_smart")
+    private String name;
+    @Field(type = FieldType.text,store = true,analyzer = "ik_max_word")
+    private String tittle;
+    @Field(type = FieldType.Long,fielddata = true,store = true,analyzer = "standard")
+    private long searchName;
+
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getTittle() {
+        return tittle;
+    }
+
+    public void setTittle(String tittle) {
+        this.tittle = tittle;
+    }
+
+    public long getSearchName() {
+        return searchName;
+    }
+
+    public void setSearchName(long searchName) {
+        this.searchName = searchName;
+    }
+
+    @Override
+    public String toString() {
+        return "Newer{" +
+                "ids='" + id + '\'' +
+                ", name='" + name + '\'' +
+                ", tittle='" + tittle + '\'' +
+                ", searchName='" + searchName + '\'' +
+                '}';
+    }
+}
+```
+
+> repositories接口类（dao）创建
+
+```java
+package com.gaogg.es.repositories;
+
+import com.gaogg.es.pojo.Newer;
+import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
+/*
+* 创建一个Repositories接口继承ElasticsearchRepository类，<数据返回类型,主键类型>
+* */
+public interface NewerRepositories extends ElasticsearchRepository<Newer,Long> {
+}
+
+```
+
+> 测试类创建
+
+<strong style="color:red">自定义查询方法里分词数据之间的关系是and,跟原始的querysrting里的or关系不一样。自定义查询方法命名规范请看`补充`</strong>。
+
+> SortBuilders.fieldSort("id").order(SortOrder.ASC)	排序
+>
+> 如果需要对字符串进行排序需要在pojo里设置下fielddata = true，设置字符串不分割。
+
+```java
+package com.gaogg.es.test;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gaogg.es.pojo.Newer;
+import com.gaogg.es.repositories.NewerRepositories;
+import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.sort.FieldSortBuilder;
+import org.elasticsearch.search.sort.SortBuilder;
+import org.elasticsearch.search.sort.SortBuilders;
+import org.elasticsearch.search.sort.SortOrder;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.elasticsearch.core.ElasticsearchTemplate;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import java.util.List;
+
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration("classpath:applicationContext.xml")
+public class ElasticSearchSpring {
+    @Autowired
+    private NewerRepositories newerRepositories;
+    @Autowired
+    private ElasticsearchTemplate elasticsearchTemplate;
+
+    @Test
+    //创建索引index,及创建type的mappings
+    public void CreateESIndex(){
+        elasticsearchTemplate.createIndex(Newer.class);
+    }
+    //添加文档及修改文档，因为lucense的修改是先删除再插入的，所以修改与插入都是使用save方法来实现的
+    @Test
+    public void insertDocumentDatas(){
+        for (int i=0;i<200;i++){
+            Newer newer=new Newer();
+            newer.setId(i);
+            newer.setName("国家卫健委:全国医务人员新冠疫苗接种率已超80%"+i);
+            newer.setTittle("国家卫生健康委医政医管局副局长李大川介绍，医务工作者处于常态化疫情防控一线，是新冠疫苗接种的重点人群之一。截至目前，全国医务人员新冠肺炎疫苗接种率已超过80%"+i);
+            newer.setSearchName(i);
+            //save保存文档
+            newerRepositories.save(newer);
+        }
+    }
+    //删除，删除分全部删除deleteAll()及按id删除deleteById(id)
+    @Test
+    public void deleteEsData(){
+        newerRepositories.deleteById(199l);
+        //全部删除
+        //newerRepositories.deleteAll();
+    }
+
+    //简单查询使用Repositories接口封装好的方法查询，全部查询及通过id查询
+    @Test
+    public void queryById(){
+        //全部查询
+        // newerRepositories.findAll().forEach(newer -> System.out.println(newer));
+        //通过id查询
+        Newer newer = newerRepositories.findById(1l).get();
+        System.out.println(newer);
+    }
+    //自定义查询，需要在newerRepositories接口里自定义查询接口方法，命名规则是get或find+By+FieldName,如果有多个FieldName在中间用Or、And、Between、not、LessThan等介词隔离开来
+    @Test
+    public void customQuery(){
+        //通过tittle查找
+        /*List<Newer> byTittles = newerRepositories.findByTittle("全国医务人员");
+        byTittles.forEach(byTittle ->{
+            System.out.println(byTittle);
+        });*/
+        //通过tittle或name查找
+        //newerRepositories.findByTittleOrName("全国医务人员","190").forEach(byTittle -> System.out.println(byTittle));
+        //通过tittle或name实现分页排序查询
+        Sort sort=Sort.by(Sort.Direction.ASC,"id");
+        Pageable pageable= PageRequest.of(0,5,sort);
+        newerRepositories.findByTittleOrName("全国医务人员","190",pageable).forEach(byTittle -> System.out.println(byTittle));
+    }
+    //NativeSearchQuery查询，基于原生的查询
+    @Test
+    public void springDataESNativeSearchQuery(){
+        QueryBuilder queryBuilders=QueryBuilders.queryStringQuery("全国医务人员").field("tittle");
+        Pageable pageable= PageRequest.of(0,5);
+        //排序固定写法
+        //SortBuilder sortBuilder=new FieldSortBuilder("id.keyword").order(SortOrder.ASC);
+        NativeSearchQuery nativeSearchQuery=new NativeSearchQueryBuilder()
+                .withQuery(queryBuilders)
+                .withSort(SortBuilders.fieldSort("id").order(SortOrder.ASC))
+                .withPageable(pageable)
+                .build();
+        elasticsearchTemplate.queryForList(nativeSearchQuery,Newer.class).forEach(newer-> System.out.println(newer));
+    }
+}
+```
+
+> 补充
+
+![image-20210425131706605](.\images\image-20210425131706605.png)
+
+#### 3、报错问题及解决
+
+> None of the configured nodes are available: [{#transport#-1}{l9VCRfjQQyWGHpkCDKonYA}{1.15.71.35}{1.15.71.35:19301}, {#transport#-2}{538oB-4ySZyOJGKxsChaYQ}{1.15.71.35}{1.15.71.35:19302}] 
+
+<strong style="color:red">在applicationContext.xml中elasticsearch:transport-client内设置`client-transport-sniff="false"`，不使用客户端去嗅探整个集群的状态；</strong>
+
+>org.elasticsearch.index.query.QueryShardException: No mapping found for [updateTime] in order to sort on
+
+<strong style="color:red">数据不存在的时候或者索引无法正确识别的时候会出现该问题。 一般排序字段为text字段时会出现，需要在创建字段时将次字段设为 fielddata = true，或者使用数字型数据字段排序。</strong>
 

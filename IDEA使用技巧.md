@@ -7,3 +7,11 @@
 ### 2、类搜索
 
 连续按2次shift
+
+### 3、plugins
+
+springboot启动引导类及application.yml文件创建插件：JBLSpringBootAppGen
+
+mybatis插件Free Mybatis plugin
+
+Mybatis-Plus插件
