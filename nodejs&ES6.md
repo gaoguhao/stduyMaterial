@@ -418,9 +418,37 @@ module.exports={
 #### 7.3 html\css压缩
 
 1. webpack压缩页面需要使用html-webpack-plugin插件；
-2. webpack压缩多页面时每个页面需要一个htmlWebpackPlugin，通过chunks标签（数组数据）指定压缩页面引入的js；
-3. chunks引用js的顺序是从上到下，由右往左，最需应用的js按此（最上面，或最右边）顺序排放；
-4. webpack压缩css需要使用style-loader与css-loader；
-5. loader的顺序是从上到下，由右往左，最需应用的js按此（最上面，或最右边）顺序排放。
 
-![image-20210507171142088](.\images\image-20210507171142088.png)
+2. webpack压缩多页面时每个页面需要一个htmlWebpackPlugin，通过chunks标签（数组数据）指定压缩页面引入的js；
+
+3. chunks引用js的顺序是从上到下，由右往左，最需应用的js按此（最上面，或最右边）顺序排放；
+
+4. webpack压缩css需要使用style-loader与css-loader**需要在web-ack.config.js里module里配置通配数据**`{test:/\.css$/,use:['style-loader','css-loader']}`；
+
+5. loader的顺序是从上到下，由右往左，最需应用的js按此（最上面，或最右边）顺序排放；
+
+6. webpack压缩less需要用到style-loader、css-loader、less包及less-loader;压缩sass需要用到style-loader、css-loader、node-sass包及sass-loader**需要在web-ack.config.js里module里配置通配数据**`{test:/\.less$/,use:['style-loader','css-loader','less-loader']},{test:/\.scss$/,use:['style-loader','css-loader','sass-loader']}`;
+
+7. 使用`mini-css-extract-plugin`将csss我当然知道成单独的文件，而不是页面里的style属性，**需要在web-ack.config.js里module里配置通配数据**`{test:/\.css$/,use:[MiniCssExtractPlugin.loader,'css-loader']}`**plugins里应用MiniCssExtractPlugin插件，**`new MiniCssExtractPlugin({filename:'gao.css'}) //filename:'gao.css'设置css文件名。`；
+
+8. 使用post-loader与postcss-preset-env来进行css兼容处理，需要增加一个`postcss.config.js`文件并暴露出postcss-preset-env方法,并在`package.json`文件中配置浏览器兼容信息`"browserslist": [">0.1%","last 2 versions","not ie <=6"]`；
+
+   ```js
+   module.exports={
+       plugins:[
+           require('postcss-preset-env')()
+       ]
+   }
+   ```
+
+9. 
+
+![image-20210508165246954](.\images\image-20210508165246954.png)
+
+![image-20210508202505023](.\images\image-20210508202505023.png)
+
+![image-20210508094442099](.\images\image-20210508094442099.png)
+
+![image-20210508100241923](.\images\image-20210508100241923.png)
+
+![image-20210508121247318](.\images\image-20210508121247318.png)
