@@ -471,11 +471,11 @@ c、单独组件页面需要要使用import 自定义组件名 from ‘自定义
 
 d、在使用组件时如果定义的组件名或组件内部方法名里有大写字段在使用时必须将大写字段改成小写字段在字段前加上-如：childrenMsg使用时需改成children-msg;
 
-###### 2、组件与父页面相互传值
+###### 2、子组件与父页面相互传值
 
-a、组件给父页面传值需使用this.$emit('组件定义的父页面调用名',ints)。父页面@组件定义的父页面调用名="父页面方法名"；
+a、子组件给父页面传值需使用this.$emit('组件定义的父页面调用名',ints)。父页面@组件定义的父页面调用名="父页面方法名"；
 
-b、组件去传值父页面时需要使用组件页面方法去调用父页面方法来传值或改值。
+b、子组件去传值父页面时需要使用子组件页面自定方法（父页面@组件定义的父页面调用名="父页面方法名"）去调用父页面方法来传值或改值。
 
 ```
 <div id="app">
@@ -550,9 +550,201 @@ b、组件去传值父页面时需要使用组件页面方法去调用父页面�
 </script>
 ```
 
+###### 3、父子组建相互访问
+
+> a、子组件可以通过`this.$parent.变量名（方法名）`来获取上层父组建的变量或方法进行操作；
+
+> b、子组件可以通过`this.$parent.$parent.变量名（方法名）`方式来获取更上层父组建信息；
+
+> c、子组件可以通过`this.$root`方式来直接最上层父组建信息；
+
+> d、父组件需要在引用组件时加上ref名`ref="one"`，同时在方法里使用`this.$refs.one(应用父组件时定义的ref名).变量名（方法名）`来获取下层子组建的变量或方法进行操作；
+
+**父组件配置：**
+
+```js
+<template>
+<!--
+子组件引用
+-->
+<!--
+  子组件获取父组件数据：
+    1、设置wirters变量，通过指令的方式将父组件的变量wirters传给子组件，子组件需通过此变量wirters在porps中获取父组件数据；
+    2、直接msg变量绑定数据传给子组件，子组件需通过此变量msg在porps中获取父组件数据；
+  父组件获取子组件数据：
+    1、需要在子组件应用时加上子组件自定义的方法名，去调用父组件自定义的方法；
+-->
+  <HelloWorld msg="Welcome to Your Vue.js App" :wirters="wirters" @hellomount="fatherGetData"/>
+<!-- 设置子组件ref名，父组建需要给子组件数据交互时需要用到 -->
+  <RightBlock ref="rblock" :lists="lists"/>
+</template>
+
+<script>
+/* 子组件导入 */
+import HelloWorld from './components/HelloWorld.vue'
+import RightBlock from './components/RightBlock'
+
+export default {
+  name: 'App',
+  data(){
+    return{
+      wirters: ["gaogg","jack","tom"],
+      lists:[{id: 0,name: "gao"},{id: 1,name: "lisstgao"}]
+    }
+  },
+  components: {
+    HelloWorld,
+    RightBlock
+  },
+  methods:{
+    fatherGetData(values){
+      /*父组建应用子组件变量*/
+      console.log(this.$refs.rblock.num)
+      /*子组件给父组件传值*/
+      for (let value of values){
+        console.log(value.id)
+      }
+    }
+  }
+}
+</script>
+```
+
+**子组件配置：**
+
+```js
+<template>
+  <div class="hello" align="center">
+    {{msg}}<br/>
+    <ul v-for="{item,index} in wirters" :key="index">
+      <li>{{item}}</li>
+    </ul>
+  </div>
+  <RightBlock :lists="lists2"/>
+</template>
+
+<script>
+import RightBlock from './RightBlock'
+export default {
+  name: 'HelloWorld',
+  data(){
+    return{
+      lists2:[{id: 0,name: "gao"},{id: 1,name: "lisstgao"}]
+    }
+  },
+  props: {
+    //获取父组件数据，如果只是字符串就可以直接定义变量名不需要定义变量类型
+    msg: String,
+    wirters: {
+      type: Array
+    }
+  },
+  components:{
+    RightBlock
+  },
+  mounted() {
+    //通过$emit子组件给父组件传数据，定义了hellomount方法，this.lists2需要传输的值
+    this.$emit('hellomount',this.lists2);
+    //通过$parent直接获取父组件变量
+    console.log(this.$parent.wirters)
+  }
+}
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<!--
+style后面加上scoped表示此样式只在此主件内使用，不为其子组件调用
+-->
+
+<style scoped>
+.hello{
+  position: relative;
+  float: left;
+  width: 40%;
+  height: 400px;
+  /*display:flex;
+  align-items:center;
+  justify-content:center;*/
+  text-align: center;
+  align-items: center;
+  background-color: yellow;
+
+  margin: 0 auto;
+}
+ul{
+  padding: 0;
+  margin: 0;
+}
+</style>
+```
+
+###### 4、插槽slot使用
+
+​	a、插槽的使用是为了给通一个模版配置上不同的数据；
+
+​	b、有多个插槽，并没有命名时父组件在调用时会替换到最后一个默认命名的插槽；
+
+​	c、vue3父组件使用插槽时必须使用模版template，使用指令的方式 v-slot:slot2（插槽名，没命名使用default）来引用;
+
+**父组件：**
+
+```js
+<template>
+  <div class="hello" align="center">
+    {{msg}}<br/>
+    <ul v-for="{item,index} in wirters" :key="index">
+      <li>{{item}}</li>
+    </ul>
+  </div>
+  <RightBlock :lists="lists2">
+    slot是为了给组件添加不一样的值
+    多个插槽slot存在时，默认会替换最后一个插槽
+  </RightBlock>
+  <RightBlock :lists="lists2">
+<!--  vue3父组件使用插槽时必须使用模版template，使用指令的方式 v-slot:slot2（插槽名，没命名使用default）来引用 -->
+    <template v-slot:slot2 >
+      测试指定单slot是不是替换指定的
+    </template>
+
+  </RightBlock>
+  <RightBlock :lists="lists2">
+    <template v-slot:slot1 >
+     多slot替换slot1
+    </template>
+    <template v-slot:slot2 >
+      多slot替换slot2
+    </template>
+    <template v-slot:default >
+      多slot替换default
+    </template>
+  </RightBlock>
+</template>
+```
+
+**子组件**
+
+```js
+<template>
+  <div class="right" v-for="item in lists" :key="item.id">
+    {{item.name}}<br>
+<!--  添加插槽slot,并通过name属性给插槽命名  -->
+    <slot name="slot1">
+      <button>slot Test Button</button><br/>
+    </slot>
+    <slot name="slot2">
+      <button>11111</button><br/>
+    </slot>
+    <slot>
+      <button>2222</button><br/>
+    </slot>
+  </div>
+
+</template>
+```
+
 ##### 14、axios获取数据
 
-使用基于 promise 的 HTTP 客户端 [axios](https://github.com/axios/axios) 则是其中非常流行的一种。
+###### a、使用基于 promise 的 HTTP 客户端 [axios](https://github.com/axios/axios) 则是其中非常流行的一种。
 
 ```vue
 <!DOCTYPE html>
@@ -604,5 +796,75 @@ b、组件去传值父页面时需要使用组件页面方法去调用父页面�
 </script>
 </body>
 </html>
+```
+
+###### b、axios除了通用的使用，还可以自定义使用
+
+1. `newVar=axios.create()`方法创建，在创建方法里可以设置基础连接baseURL，超时时间等数据timeout；
+2. 可以使用interceptors添加，请求拦截器`newVar.interceptors.request.use(）`及响应拦截器`newVar.interceptors.response.use(）`,拦截器内需要配置2个方法，一个是事件处理方法，二是报错处理方法；
+3. 封装数据请求方法，可通过自定方法newVar调用axios封装方法进行数据交互
+
+```js
+import axios from 'axios'
+
+//自定义axios
+let newVar = axios.create({
+    //设置基础链接，基础链接会自动添加到请求练级的前面；
+    baseUrl:"http://180.100.134.145:8006",
+    //配置响应超时时间，单位是毫秒
+    timeout:30000
+});
+
+//请求拦截器,发送请求后在服务器接受请求前处理
+newVar.interceptors.request.use(
+    //拦截处理方法，可以增加请求动画之类的提高用户的体验，添加token信息之类的
+    config=>{
+        //给头部添加token信息
+        config.header.token="12345";
+        //
+        return config;
+    },
+    //报错处理
+    error=>{
+        //此处不处理向下传递由下行处理
+        return Promise.reject(error);
+    }
+);
+
+//响应拦截器，服务器回请求后在页面响应前处理
+
+newVar.interceptors.response.use(
+    //响应回来的数据，可以对返回数据进行处理通过状态的判断，动画的消失，或者对toen的过期判断
+    requireData=>{
+        console.log(requireData);
+        //return requireData;
+    },
+    //报错处理
+    error=>{
+        //此处不处理向下传递由下行处理
+        return Promise.reject(error);
+    }
+);
+
+export function get(url,parems){
+    return newVar.get(url,{parems});
+}
+
+export function post(url,parems){
+    return newVar.post(url,parems,{
+        transformRequest:[
+            function (data) {
+                let str="";
+                for (let key in data){
+                    console.log(key);
+                    str +=encodeURIComponent("key="+data[key]+"&");
+                }
+            }
+        ],
+        header:{
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+    });
+}
 ```
 
