@@ -971,3 +971,113 @@ bootstrap checks failed  max file descriptors [4096] for elasticsearch process i
 此文件修改后需要重新登录用户，才会生效
 ```
 
+### 19.Nacos安装
+
+#### 19.1镜像拉取
+
+```shell
+docker pull nacos/nacos-server
+```
+
+#### 19.2远程mysql创建
+
+在mysql中创建nacos数据库，并执行数据表创建脚本
+
+![image-20210608231436078](.\images\image-20210608231436078.png)
+
+下载地址：[https://github.com/alibaba/nacos/blob/master/config/src/main/resources/META-INF/nacos-db.sql](https://links.jianshu.com/go?to=https%3A%2F%2Fgithub.com%2Falibaba%2Fnacos%2Fblob%2Fmaster%2Fconfig%2Fsrc%2Fmain%2Fresources%2FMETA-INF%2Fnacos-db.sql)
+
+#### 19.3nacos远程mysql配置
+
+修改配置文件application.properties
+
+```properties
+# spring
+server.servlet.contextPath=/nacos
+server.contextPath=/nacos
+server.port=8848
+spring.datasource.platform=mysql
+nacos.cmdb.dumpTaskInterval=3600
+nacos.cmdb.eventTaskInterval=10
+nacos.cmdb.labelTaskInterval=300
+nacos.cmdb.loadDataAtStart=false
+db.num=1
+#db.url.0=jdbc:mysql://${MYSQL_SERVICE_HOST}:${MYSQL_SERVICE_PORT:3306}/${MYSQL_SERVICE_DB_NAME}?${MYS
+QL_SERVICE_DB_PARAM:characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&u
+seSSL=false}
+#db.url.1=jdbc:mysql://${MYSQL_SERVICE_HOST}:${MYSQL_SERVICE_PORT:3306}/${MYSQL_SERVICE_DB_NAME}?${MYS
+QL_SERVICE_DB_PARAM:characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&u
+seSSL=false}
+
+db.url.0=jdbc:mysql://1.15.71.35:13306/nacos_config?characterEncoding=utf8&connectTimeout=1000&socketT
+imeout=3000&autoReconnect=true
+db.user=XXXX
+db.password=XXX
+### The auth system to use, currently only 'nacos' is supported:
+nacos.core.auth.system.type=nacos
+
+
+### The token expiration in seconds:
+nacos.core.auth.default.token.expire.seconds=${NACOS_AUTH_TOKEN_EXPIRE_SECONDS:18000}
+
+### The default token:
+nacos.core.auth.default.token.secret.key=${NACOS_AUTH_TOKEN:SecretKey012345678901234567890123456789012
+345678901234567890123456789}
+
+### Turn on/off caching of auth information. By turning on this switch, the update of auth information
+ would have a 15 seconds delay.
+nacos.core.auth.caching.enabled=${NACOS_AUTH_CACHE_ENABLE:false}
+nacos.core.auth.enable.userAgentAuthWhite=${NACOS_AUTH_USER_AGENT_AUTH_WHITE_ENABLE:false}
+nacos.core.auth.server.identity.key=${NACOS_AUTH_IDENTITY_KEY:serverIdentity}
+nacos.core.auth.server.identity.value=${NACOS_AUTH_IDENTITY_VALUE:security}
+server.tomcat.accesslog.enabled=${TOMCAT_ACCESSLOG_ENABLED:false}
+server.tomcat.accesslog.pattern=%h %l %u %t "%r" %s %b %D
+# default current work dir
+server.tomcat.basedir=
+## spring security config
+### turn off security
+nacos.security.ignore.urls=${NACOS_SECURITY_IGNORE_URLS:/,/error,/**/*.css,/**/*.js,/**/*.html,/**/*.m
+ap,/**/*.svg,/**/*.png,/**/*.ico,/console-fe/public/**,/v1/auth/**,/v1/console/health/**,/actuator/**,
+/v1/console/server/**}
+# metrics for elastic search
+management.metrics.export.elastic.enabled=false
+management.metrics.export.influx.enabled=false
+
+nacos.naming.distro.taskDispatchThreadCount=10
+nacos.naming.distro.taskDispatchPeriod=200
+nacos.naming.distro.batchSyncKeyCount=1000
+nacos.naming.distro.initDataRatio=0.9
+nacos.naming.distro.syncRetryDelay=5000
+nacos.naming.data.warmup=true
+```
+
+#### 19.4nacos启动
+
+```shell
+docker  run --name nacos -itd -p 8848:8848 --privileged=true --restart=always -e JVM_XMS=256m -e JVM_XMX=256m -e MODE=standalone -e PREFER_HOST_MODE=hostname -v /data/nacos/logs:/home/nacos/logs -v /data/nacos/config/application.properties:/home/nacos/conf/application.properties nacos/nacos-server
+或：
+docker run --name nacos -itd -p 18848:8848 --privileged=true --restart=always -e MODE=standalone -v /data/nacos/logs:/home/nacos/logs -v /data/nacos/config/application.properties:/home/nacos/conf/application.properties nacos/nacos-server
+```
+
+### 20.sentinel安装
+
+```shell
+docker pull bladex/sentinel-dashboard:latest
+```
+
+```shell
+ docker run -itd -p 18858:8858 --restart=always --name sentinel bladex/sentinel-dashboard
+```
+
+### 21.Zipkin安装
+
+```shell
+docker pull openzipkin/zipkin:latest
+```
+
+```shell
+ docker run -itd -p 19411:9411 --restart=always --name zipkin openzipkin/zipkin
+```
+
+
+

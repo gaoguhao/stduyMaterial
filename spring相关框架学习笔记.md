@@ -1274,7 +1274,7 @@ server:
 spring:
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/springcloud
+    url: jdbc:mysql://localhost:3306/springcloud?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&useSSL=true
     username: root
     password: root
 mybatis:
@@ -1646,7 +1646,6 @@ http://127.0.0.1:10086/
 >     #服务续约(renew)的间隔时间，默认为30s,如果30s内无人使用会再次注册
 >     lease-renewal-interval-in-seconds: 10
 > ```
->
 
 > 单机
 
@@ -1656,7 +1655,7 @@ server:
 spring:
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://1.15.71.35:13306/springcloud
+    url: jdbc:mysql://1.15.71.35:13306/springcloud?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&useSSL=true
     username: root
     password: Ab00859567c!
   #定义项目名
@@ -2713,7 +2712,7 @@ eureka:
 spring:
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://1.15.71.35:13306/springcloud
+    url: jdbc:mysql://1.15.71.35:13306/springcloud?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&useSSL=true
     username: root
     password: root
   cloud:
