@@ -73,10 +73,55 @@ docker-ce.x86_64  18.06.0.ce-3.el7                    docker-ce-stable
 sudo yum install docker-ce-<VERSION_STRING> docker-ce-cli-<VERSION_STRING> containerd.io
 ```
 
-###### c、启动docker
+##### c、启动docker
 
 ```shell
 sudo systemctl start docker 
+```
+
+##### d、window10安装docker
+
+###### 1)Hyper-V安装及开启
+
+Hyper-V 是微软开发的虚拟机，类似于 VMWare 或 VirtualBox，仅适用于 Windows 10。这是 Docker Desktop for Windows 所使用的虚拟机。
+
+但是，这个虚拟机一旦启用，QEMU、VirtualBox 或 VMWare Workstation 15 及以下版本将无法使用！如果你必须在电脑上使用其他虚拟机（例如开发 Android 应用必须使用的模拟器），请不要使用 Hyper-V！
+
+在添加程序里开启Hyper-V
+
+也可以通过命令来启用 Hyper-V ，请右键开始菜单并以管理员身份运行 PowerShell，执行以下命令：
+
+```shell
+Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V -All
+```
+
+###### 2）安装 Docker Desktop for Windows
+
+###### 3）安装WSL2
+
+**安装WSL内核升级包 wsl_update_x64.msi:**
+
+```shell
+https://docs.microsoft.com/zh-cn/windows/wsl/wsl2-kernel
+# 下载地址
+https://wslstorestorage.blob.core.windows.net/wslblob/wsl_update_x64.msi
+```
+
+**以管理员方式启动PowerShell：**
+
+```shell
+Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+#设置默认虚拟linux系统
+wsl --set-version Ubuntu-20.04 2
+#设置默认wsl开启版本
+wsl --set-default-version 2
+```
+
+**验证:**
+
+```shell
+wsl -l -v
 ```
 
 ### 2、访问docker镜像（所有软件均可此方法访问）
@@ -976,7 +1021,7 @@ bootstrap checks failed  max file descriptors [4096] for elasticsearch process i
 #### 19.1镜像拉取
 
 ```shell
-docker pull nacos/nacos-server
+docker pull nacos/nacos-server:latest
 ```
 
 #### 19.2远程mysql创建
