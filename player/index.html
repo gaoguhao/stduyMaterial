@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title></title>
+		<style type="text/css">
+			body,div,table,caption,tbody,tfoot,thead,tr,th,td,p {margin: 0px;padding: 0px;border: 0px;}
+			html,body {color: #fff;font-family: "Microsoft YaHei";line-height: 100%;overflow: hidden;font-size: 12px;}
+			.linetitleWithe{
+				position: absolute;
+				left:20px;
+				width: 138px;
+				height: 30px;
+				color: #dadbdc;
+			}
+			.linetitleblue{
+				position: absolute;
+				left:20px;
+				width: 138px;
+				height: 30px;
+				color: #3b85cd;
+			}
+			.linetitlegold{
+				position: absolute;
+				left:20px;
+				width: 138px;
+				height: 30px;
+				color: #a86516;
+			}
+			.down{
+				position: absolute;
+				border-left: 2px solid white;
+				border-bottom: 2px solid white;
+				left: 130px;
+				bottom:3px;
+				height: 8px;
+				width: 8px;
+				transform: translate(2px, -2px) rotate(135deg);
+				-webkit-transform: translate(2px, -2px) rotate(135deg);
+				border-right: 2px solid transparent;
+				border-top: 2px solid transparent;
+				display: inline-block;
+				-moz-transform: translate(2px, -2px) rotate(135deg);
+				-ms-transform: translate(2px, -2px) rotate(135deg);
+				-o-transform: translate(2px, -2px) rotate(135deg);
+			}
+			.up{
+				position: absolute;
+				left: 130px;
+				top:7px;
+				border-left: 2px solid white;
+				border-bottom: 2px solid white;
+				height: 8px;
+				width: 8px;
+				transform: translate(2px, -2px) rotate(-45deg);
+				-webkit-transform: translate(2px, -2px) rotate(-45deg);
+				border-right: 2px solid transparent;
+				border-top: 2px solid transparent;
+				display: inline-block;
+				-moz-transform: translate(2px, -2px) rotate(-45deg);
+				-ms-transform: translate(2px, -2px) rotate(-45deg);
+				-o-transform: translate(2px, -2px) rotate(-45deg);
+			}
+			.chooseDis{
+				display: none;
+			}
+			.pineLinesHeight{
+				position: absolute;
+				top:0px;
+				z-index: 999;
+				width: 2px;
+				background-color: #dadbdc;
+			}
+			.lines{
+				position: absolute;
+				z-index: 999;
+				top:0px;
+				left: 159px;
+				width: 2px;
+				background-color: black;
+			}
+			.lineslittile{
+				position: absolute;
+				z-index: 999;
+				top:20px;
+				width: 2px;
+				height: 10px;
+				background-color: #dadbdc;
+			}
+			.lineslittilesy{
+				position: absolute;
+			    z-index: 999;
+			    width: 35px;
+			    height: 20px;
+			    top: -25px;
+			    left: -20px;
+			    color: white;
+			}
+			.linetitles{
+				position: relative;
+				width: 720px;
+				background-color: #54565e;
+			}
+			.chooseWordtitles{
+				position: relative;
+				width: 720px;
+				height: 30px;
+				line-height: 30px;
+				/*background-color: #54565e;*/
+				background-color: rgba(0,0,0,0.9);
+			}
+			.forwardTittle{
+				position: absolute;
+				width: 2px;
+				height: 15px;
+				color: #dadbdc;
+			}
+			.afterwardTittle{
+				position: absolute;
+				width: 2px;
+				height: 15px;
+				color: #dadbdc;
+			}
+			.forwardTittle span{
+				display: none;
+			}
+			.afterwardTittle span{
+				display: none;
+			}
+			.forwardTittle:hover span{
+				display: block;
+			}
+			.afterwardTittle:hover span{
+				display: block;
+			}
+			
+			.lineColorBloack{
+				width: 720px;
+				height: 30px;
+				line-height: 30px;
+				background-color: rgba(39,39,40,0.9);
+			}
+			.lineColorGrey{
+				width: 720px;
+				height: 30px;
+				line-height: 30px;
+				background-color: #54565e;
+			}
+			.colorRed{
+				position: absolute;
+				height: 15px;
+				background-color: #eb2e2e;
+			}
+			.colorYellow{
+				position: absolute;
+				height: 15px;
+				background-color: #f38900;
+			}
+			.colorTop{
+				margin-top:15px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="bokongci" class="bokongci">
+			
+		</div>
+	</body>
+	<script>
+		//行高
+		var lineHeight=30;
+		//视频时场，单位秒
+		var playCountTime=6*60;
+		//一分钟分几块
+		var oneMinute=6;
+		//视频div总长度
+		var paneLine=720-160;
+		//每秒视频div长度
+		var onePane=paneLine/playCountTime;
+		//几个关键词
+		var chooseWords=['政治','局势'];
+		//每个关键词有几个小词
+		var oneChooseWords=Math.floor(Math.random()*5)+1;
+		//关键词信息
+		var mingganci=[{begin:30,end:40,pos:1},
+								{begin:70,end:90,pos:1},
+								{begin:100,end:102,pos:1},
+								{begin:100,end:102,pos:1},
+								{begin:120,end:138,pos:2},
+								{begin:176,end:202,pos:1},
+								{begin:250,end:300,pos:1}
+							];
+		var pineLinesHeight=0;					
+		var str="";
+		console.log(oneChooseWords)
+		for (var i = 0; i < chooseWords.length; i++) {
+			pineLinesHeight +=(oneChooseWords*lineHeight)+6+lineHeight;
+			console.log(pineLinesHeight)
+			str +='<div class="chooseWordtitles">'
+					+'<div class="linetitleblue">'+chooseWords[i]+'</div>'
+					+'<div class="up" id="changeForwad_'+i+'" onclick="changeForwads(this.id);"></div>'
+					/*+'<div class="lines"></div>';*/
+					for(var tempi=0;tempi<Math.ceil(playCountTime/60)*oneMinute;tempi++){
+						if(tempi%oneMinute==0&&tempi>0){
+							str +='<div class="lineslittile" style="left:'+((tempi+1)*10*onePane+160)+'px;"><span class="lineslittilesy">'+(tempi/oneMinute)+'分</span></div>';
+						}
+						str +='<div class="lineslittile" style="left:'+((tempi+1)*10*onePane+160)+'px;"></div>';
+					}
+					
+			str +='</div><div class="linetitles" id="linetitles_'+i+'" style="height:'+((oneChooseWords*lineHeight)+6)+'px;">';
+			for (var j=0;j<oneChooseWords;j++){
+				if(j%2==0){
+					str +='<div class="lineColorBloack" id="box'+i+'_'+j+'">'
+						+'<div class="linetitleWithe">这是测试栏目'+j+'</div>'
+						/*+'<div class="lines"></div>';*/
+				}else{
+					str +='<div class="lineColorGrey"  id="box'+i+'_'+j+'">'
+						+'<div class="linetitlegold">这是测试栏目'+j+'</div>'
+						/*+'<div class="lines"></div>';*/
+				}
+				for (var t = 0; t < mingganci.length; t++) {
+					str+='<div class="'+(mingganci[t].pos==1?'colorRed':'colorYellow colorTop')+'" style="left:'+(mingganci[t].begin*onePane+160)+'px;width:'+(mingganci[t].end-mingganci[t].begin)*onePane+'px;">'
+					+'<div class="forwardTittle" onclick="toPlayVoide('+mingganci[t].begin+','+(mingganci[t].begin*onePane+160)+');"><span>'+mingganci[t].begin+'</span></div>'
+					+'<div class="afterwardTittle" style="left:'+(mingganci[t].end-mingganci[t].begin)*onePane+'px;" onclick="toPlayVoide('+mingganci[t].end+','+(mingganci[t].begin*onePane+160+(mingganci[t].end-mingganci[t].begin)*onePane)+');"><span>'+mingganci[t].end+'</span></div>'
+					+'</div>';
+				}
+				str +='</div>';
+			}
+			str +='</div>';
+		}
+		str +='<div class="lines" style="height:'+pineLinesHeight+'px;"></div>'
+				+'<div class="pineLinesHeight" id="pineLinesHeight" style="height:'+pineLinesHeight+'px;"><div>';
+		document.getElementById("bokongci").innerHTML=str;
+		
+		
+		function toPlayVoide(playTimes,pineLines){
+			console.log("pineLines is clicked="+pineLines)
+			document.getElementById("pineLinesHeight").style.left=pineLines+'px';
+			console.log("toPlayVoide is clicked="+playTimes)
+		}
+		
+		
+		
+		function changeForwads(changeForwadsId){
+			var box_id=split_focus_id(changeForwadsId);
+			var temBox="linetitles_"+box_id;
+			
+		    var tempCount=0;
+		    var obj=document.getElementById(temBox);
+		    var aClass = obj.className.split(' ');
+		    if (!obj.className) return;
+		    for (var i = 0; i < aClass.length; i++) {
+		        if (aClass[i] == "chooseDis") {
+		        	removeClass(changeForwadsId,"down");
+		    		addClass(changeForwadsId,"up");
+		            aClass.splice(i, 1);
+		            obj.className = aClass.join(' ');
+		            tempCount=1;
+		             return;
+		        }
+		    }
+		    
+		    if(tempCount==0){
+		    	obj.className += ' ' +"chooseDis";
+		    	removeClass(changeForwadsId,"up");
+		        addClass(changeForwadsId,"down");
+		    }
+			console.log("changeForwads is clicked"+box_id);
+			
+		}
+		
+		function split_focus_id(focus_name){
+			return box_id = parseInt(focus_name.split("_")[1]);
+		}
+		
+		function addClass (str, sClass) {
+			var obj=document.getElementById(str);
+			var aClass = obj.className.split(' ');
+		    if (!obj.className) {
+		        obj.className = sClass;
+		        return;
+		    }
+		    for (var i = 0; i < aClass.length; i++) {
+		        if (aClass[i] == sClass) return;
+		    }
+		    obj.className += ' ' + sClass;
+		}
+		function removeClass(str, sClass) {
+			var obj=document.getElementById(str);
+		    var aClass = obj.className.split(' ');
+		    if (!obj.className) return;
+		    var data = sClass.split(" ");
+		    for(var k = 0;k<data.length;k++){
+			    for (var i = 0; i < aClass.length; i++) {
+			        if (aClass[i] == data[k]) {
+			            aClass.splice(i, 1);
+			            obj.className = aClass.join(' ');
+			            // return;
+			        }
+			    }
+		    }
+		}
+		
+	</script>
+</html>
