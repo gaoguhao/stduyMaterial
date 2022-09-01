@@ -644,3 +644,73 @@ this.initialize.apply(this , arguments);
 是什么意思？
 这里的第一个this，是指用new调用构造函数之后生成的对象，也就是前面的a，那么第二个this也当然应该是指同一个对象。那这句话就是this（也就是a）调用initialize方法，参数是arguments对象（参数的数组对象），所以在构造函数执行的时候，对象a就会去执行initialize方法来初始化，这样就和单词“initialize”的意思对上了。
 那么执行initialize方法的参数怎么传递进去的呢？
+
+### 9、npm镜像安装及切换
+
+#### 9.1、npm镜像安装
+
+> 镜像源链接切换
+
+**全局切换镜像源：**
+
+```shell
+npm config set registry http://registry.npm.taobao.org
+```
+
+**查看镜像源使用状态:**
+
+```shell
+npm get registry
+```
+
+**全局切换官方镜像源：**
+
+```shell
+npm config set registry http://registry.npmjs.org
+```
+
+**设置代理节点：**
+
+```js
+npm install -g taobao --registry=https://registry.npmmirror.com/
+```
+
+```js
+*npm ---------- https://registry.npmjs.org/
+ yarn --------- https://registry.yarnpkg.com/
+ tencent ------ https://mirrors.cloud.tencent.com/npm/
+ cnpm --------- https://r.cnpmjs.org/
+ taobao ------- https://registry.npmmirror.com/
+ npmMirror ---- https://skimdb.npmjs.com/registry/
+ 21cn --------- https://npm.tech.21cn.com/
+```
+
+#### 9.2使用nrm查看及切换镜像源
+
+**下载nrm:**
+
+```shell
+npm install -g nrm
+```
+
+**使用nrm查看镜像源:** （*表示正在使用的镜像源）
+
+```shell
+nrm ls
+```
+
+**使用nrm切换到淘宝镜像源:**
+
+```shell
+nrm use taobao
+```
+
+#### 9.3注意：
+
+在linux系统环境里面如果下载nrm后执行nrm ls命令出现未找到命令，需要配置全局的软链接:
+
+```shell
+sudo ln -s /home/nodejs/bin/nrm /usr/local/bin/
+```
+
+其中/home/nodejs/bin/nrm/是指你本地安装nodejs包的路径，/use/local/bin/路径是你的程序命令执行路径，相当与windows的环境变量PATH路径，配置后可以在系统的任意位置执行你的命令。
