@@ -1,0 +1,77 @@
+.indexContent[data-v-3b0071ae] {
+  position: absolute;
+  left: 5.54199rem;
+  width: 17.89551rem;
+  height: 13.18359rem;
+  overflow: hidden;
+}
+.indexContent .content[data-v-3b0071ae] {
+  position: absolute;
+  width: 17.89551rem;
+  height: 13.18359rem;
+  transition: all 0.3s;
+}
+.indexContent .content .item[data-v-3b0071ae] {
+  position: relative;
+  float: left;
+  width: 4.27246rem;
+  height: 5.12695rem;
+}
+.indexContent .content .item .pic[data-v-3b0071ae] {
+  position: absolute;
+  width: 3.17383rem;
+  height: 4.49219rem;
+}
+.indexContent .content .item .tittle[data-v-3b0071ae] {
+  position: absolute;
+  top: 4.5166rem;
+  width: 3.17383rem;
+  height: 0.73242rem;
+  line-height: 0.73242rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.43945rem;
+  text-align: center;
+}
+.indexContent .content .focus[data-v-3b0071ae] {
+  background-color: red;
+}
+.leftNav[data-v-3b0071ae] {
+  position: absolute;
+  width: 5.54199rem;
+  height: 13.18359rem;
+  overflow: hidden;
+}
+.leftNav .content[data-v-3b0071ae] {
+  position: absolute;
+  width: 5.54199rem;
+  height: 13.18359rem;
+  transition: all 1s;
+}
+.leftNav .content .item[data-v-3b0071ae] {
+  position: relative;
+  left: 0.48828rem;
+  width: 4.56543rem;
+  height: 1.46484rem;
+}
+.leftNav .content .item .tittle[data-v-3b0071ae] {
+  position: absolute;
+  top: 0.24414rem;
+  width: 4.56543rem;
+  height: 0.97656rem;
+  line-height: 0.97656rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 0.43945rem;
+  text-align: center;
+  border-radius: 0.24414rem;
+}
+.leftNav .content .focus .tittle[data-v-3b0071ae] {
+  border: 4px solid red;
+  border-radius: 0.24414rem;
+}
+.leftNav .content .seleced .tittle[data-v-3b0071ae] {
+  background-color: rgba(255, 165, 0, 0.7);
+}

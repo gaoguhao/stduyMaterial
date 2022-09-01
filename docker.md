@@ -79,7 +79,39 @@ sudo yum install docker-ce-<VERSION_STRING> docker-ce-cli-<VERSION_STRING> conta
 sudo systemctl start docker 
 ```
 
-##### d、window10安装docker
+##### d、安装docker compose
+
+###### 方法一、通过yum安装compose
+
+```shell
+# 1、安装python-pip
+yum -y install epel-release
+yum -y install python-pip
+# pip安装docker compose报错Command "python setup.py egg_info" failed with error code 1 in /tmp/pip-build-xEGBjE/pynacl/
+# 解决方法：
+python -m pip install --upgrade --force pip
+pip install setuptools==33.1.1
+# 2、安装docker-compose
+pip install docker-compose
+待安装完成后，执行查询版本的命令确认安装成功
+docker-compose version
+spring.dubbo
+application.name
+registry.port
+```
+
+###### 方法二、远程安装compose
+
+```shell
+#远程安装compose
+curl -L https://github.com/docker/compose/releases/download/1.3.1/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+#改权限
+chmod +x /usr/local/bin/docker-compose
+#查看版本号，测试是否安装成功
+docker-compose version
+```
+
+##### e、window10安装docker
 
 ###### 1)Hyper-V安装及开启
 
@@ -204,20 +236,21 @@ docker search mysql
 ### 10、日志查看
 
   1) docker ps
-  查看正在运行的docker容器有哪些。
-  2)docker ps -a
-  查看所有docker容器，包括不在running状态的。
-  3)docker logs 参数 容器id
-  查看具体某一个容器的日志。
-  其中参数可选择的有：
-  -f follow 表示实时显示日志
-  -t timestamp 表示显示时间戳
-  --tail=n  表示显示末尾n行
-  例如：docker logs -f --tail=200 xxxx，表示实时加载日志信息，并且仅显示最后200行。
-  4)docker logs 参数 容器id | grep str
-  查找日志文件中含有特定字符串的行
-  5)docker logs 参数 容器id | grep str >> out.txt
-  查找日志文件中含有特定字符串的行，并且输出到指定文件out.txt中。
+
+    查看正在运行的docker容器有哪些。
+    2)docker ps -a
+    查看所有docker容器，包括不在running状态的。
+    3)docker logs 参数 容器id
+    查看具体某一个容器的日志。
+    其中参数可选择的有：
+    -f follow 表示实时显示日志
+    -t timestamp 表示显示时间戳
+    --tail=n  表示显示末尾n行
+    例如：docker logs -f --tail=200 xxxx，表示实时加载日志信息，并且仅显示最后200行。
+    4)docker logs 参数 容器id | grep str
+    查找日志文件中含有特定字符串的行
+    5)docker logs 参数 容器id | grep str >> out.txt
+    查找日志文件中含有特定字符串的行，并且输出到指定文件out.txt中。
 
 ### 11、docker镜像参数查看
 
@@ -317,7 +350,9 @@ docker build -t gaogg/tomcat .
 ##### 2、启动tomcat
 
 ```shell
-docker run --restart=always -itd -p 8888:8080 -v /data/tomcat/:/usr/local/tomcat/webapps/ --name tomcat8.5 tomcat:8.5.63-jdk15-openjdk-oraclelinux7
+docker run --restart=always -itd -p 80:8080 -p443:8443 -v /data/tomcat/:/usr/local/tomcat/webapps/ --name tomcat8.5 tomcat:8.5.63-jdk15-openjdk-oraclelinux7
+#自定义启动
+docker run --restart=always -itd -p 80:8080 -p443:8443 -v /data/tomcat/:/opt/tomcat8/webapps/ --name tomcat8.5 gaogg/tomcat
 ```
 
 -d 在后台运行容器，并且打印容器id。–detach
@@ -329,6 +364,40 @@ docker run --restart=always -itd -p 8888:8080 -v /data/tomcat/:/usr/local/tomcat
 -p 指定访问主机的`8888`端口映射到`8080`端口。
 
 -v 指定我们容器的`/usr/local/tomcat/webapps/`目录为`/root/tomcat/`主机目录，后续我们要对tomcat进行操作直接在主机这个目录操作即可。
+
+##### 3、配置ssl
+###### 1）可以注销注释掉8080端口配置  (不是必须，也可以不注释，不注释的话，则http 8080端口也可以访问)
+```xml
+<!--<Connector port="8080" protocol="HTTP/1.1"  
+               connectionTimeout="20000"  
+               redirectPort="8443" />-->
+```
+###### 2)取消注释8443端口配置，并改为**443**端口（**访问不加端口的设置**）
+取消注释8443端口配置，并改为443端口（访问不加端口的设置）（注意：Https访问的端口是8443，可以修改成别的端口。），将生成的正式和密码配置到keystoreFile="C:\apache-tomcat-8.5.31\conf\key\tomcat.keystore" keystorePass="123456"
+```xml
+<Connector port="443" protocol="org.apache.coyote.http11.Http11AprProtocol"
+               maxThreads="150" SSLEnabled="true"  keystoreFile="conf/gaoguhao.top.pfx"
+                         keystorePass="******"
+                         clientAuth="false" >
+    <!--<SSLHostConfig>
+            <Certificate certificateKeystoreFile="conf/localhost-rsa.jks"
+                         type="RSA" />
+        </SSLHostConfig>-->
+ </Connector> 
+    
+```
+###### 3)如果是tomcat8.0配置ssl
+```xml
+<Connector port="443" protocol="org.apache.coyote.http11.Http11AprProtocol"
+               maxThreads="150" SSLEnabled="true" scheme="https" secure="true" sslProtocol="TLS"  keystoreFile="conf/gaoguhao.top.pfx"
+                         keystorePass="******"
+                         clientAuth="false" >
+    <!--<SSLHostConfig>
+            <Certificate certificateKeystoreFile="conf/localhost-rsa.jks"
+                         type="RSA" />
+        </SSLHostConfig>-->
+ </Connector> 
+```
 
 ### 14、redis配置
 
@@ -720,7 +789,7 @@ ElasticSearch与关系型数据库mysql的对比：
 
 **postman不带参数生成**
 
-![image-20210413205957556](E:\gitTest\images\image-20210413205911448.png)
+![image-20210413205957556](.\images\image-20210413205911448.png)
 
 ​		**postman带参数生成**
 
@@ -1102,6 +1171,12 @@ nacos.naming.data.warmup=true
 docker  run --name nacos -itd -p 8848:8848 --privileged=true --restart=always -e JVM_XMS=256m -e JVM_XMX=256m -e MODE=standalone -e PREFER_HOST_MODE=hostname -v /data/nacos/logs:/home/nacos/logs -v /data/nacos/config/application.properties:/home/nacos/conf/application.properties nacos/nacos-server
 或：
 docker run --name nacos -itd -p 18848:8848 --privileged=true --restart=always -e MODE=standalone -v /data/nacos/logs:/home/nacos/logs -v /data/nacos/config/application.properties:/home/nacos/conf/application.properties nacos/nacos-server
+
+**nacos升级到2.0.0版本后启动需要注意如果只是放开了8848端口会报错，需要加上9848端口开通gRPC的支持，否则会报错**
+<stong style="color:red">com.alibaba.nacos.api.exception.NacosException: Request nacos server failed</stong>
+
+docker run --name nacos -itd -p 18848:8848 19848:9848 --privileged=true --restart=always -e MODE=standalone -v /data/nacos/logs:/home/nacos/logs -v /data/nacos/config/application.properties:/home/nacos/conf/application.properties nacos/nacos-server
+
 ```
 
 ### 20.sentinel安装
@@ -1124,5 +1199,179 @@ docker pull openzipkin/zipkin:latest
  docker run -itd -p 19411:9411 --restart=always --name zipkin openzipkin/zipkin
 ```
 
+#### zipkin持久化mysql
 
+mysql创建数据库zipkin在数据库里创建表如下：
 
+```mysql
+CREATE TABLE IF NOT EXISTS zipkin_spans (
+  `trace_id_high` BIGINT NOT NULL DEFAULT 0 COMMENT 'If non zero, this means the trace uses 128 bit traceIds instead of 64 bit',
+  `trace_id` BIGINT NOT NULL,
+  `id` BIGINT NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `remote_service_name` VARCHAR(255),
+  `parent_id` BIGINT,
+  `debug` BIT(1),
+  `start_ts` BIGINT COMMENT 'Span.timestamp(): epoch micros used for endTs query and to implement TTL',
+  `duration` BIGINT COMMENT 'Span.duration(): micros used for minDuration and maxDuration query',
+  PRIMARY KEY (`trace_id_high`, `trace_id`, `id`)
+) ENGINE=InnoDB ROW_FORMAT=COMPRESSED CHARACTER SET=utf8 COLLATE utf8_general_ci;
+
+ALTER TABLE zipkin_spans ADD INDEX(`trace_id_high`, `trace_id`) COMMENT 'for getTracesByIds';
+ALTER TABLE zipkin_spans ADD INDEX(`name`) COMMENT 'for getTraces and getSpanNames';
+ALTER TABLE zipkin_spans ADD INDEX(`remote_service_name`) COMMENT 'for getTraces and getRemoteServiceNames';
+ALTER TABLE zipkin_spans ADD INDEX(`start_ts`) COMMENT 'for getTraces ordering and range';
+
+CREATE TABLE IF NOT EXISTS zipkin_annotations (
+  `trace_id_high` BIGINT NOT NULL DEFAULT 0 COMMENT 'If non zero, this means the trace uses 128 bit traceIds instead of 64 bit',
+  `trace_id` BIGINT NOT NULL COMMENT 'coincides with zipkin_spans.trace_id',
+  `span_id` BIGINT NOT NULL COMMENT 'coincides with zipkin_spans.id',
+  `a_key` VARCHAR(255) NOT NULL COMMENT 'BinaryAnnotation.key or Annotation.value if type == -1',
+  `a_value` BLOB COMMENT 'BinaryAnnotation.value(), which must be smaller than 64KB',
+  `a_type` INT NOT NULL COMMENT 'BinaryAnnotation.type() or -1 if Annotation',
+  `a_timestamp` BIGINT COMMENT 'Used to implement TTL; Annotation.timestamp or zipkin_spans.timestamp',
+  `endpoint_ipv4` INT COMMENT 'Null when Binary/Annotation.endpoint is null',
+  `endpoint_ipv6` BINARY(16) COMMENT 'Null when Binary/Annotation.endpoint is null, or no IPv6 address',
+  `endpoint_port` SMALLINT COMMENT 'Null when Binary/Annotation.endpoint is null',
+  `endpoint_service_name` VARCHAR(255) COMMENT 'Null when Binary/Annotation.endpoint is null'
+) ENGINE=InnoDB ROW_FORMAT=COMPRESSED CHARACTER SET=utf8 COLLATE utf8_general_ci;
+
+ALTER TABLE zipkin_annotations ADD UNIQUE KEY(`trace_id_high`, `trace_id`, `span_id`, `a_key`, `a_timestamp`) COMMENT 'Ignore insert on duplicate';
+ALTER TABLE zipkin_annotations ADD INDEX(`trace_id_high`, `trace_id`, `span_id`) COMMENT 'for joining with zipkin_spans';
+ALTER TABLE zipkin_annotations ADD INDEX(`trace_id_high`, `trace_id`) COMMENT 'for getTraces/ByIds';
+ALTER TABLE zipkin_annotations ADD INDEX(`endpoint_service_name`) COMMENT 'for getTraces and getServiceNames';
+ALTER TABLE zipkin_annotations ADD INDEX(`a_type`) COMMENT 'for getTraces and autocomplete values';
+ALTER TABLE zipkin_annotations ADD INDEX(`a_key`) COMMENT 'for getTraces and autocomplete values';
+ALTER TABLE zipkin_annotations ADD INDEX(`trace_id`, `span_id`, `a_key`) COMMENT 'for dependencies job';
+
+CREATE TABLE IF NOT EXISTS zipkin_dependencies (
+  `day` DATE NOT NULL,
+  `parent` VARCHAR(255) NOT NULL,
+  `child` VARCHAR(255) NOT NULL,
+  `call_count` BIGINT,
+  `error_count` BIGINT,
+  PRIMARY KEY (`day`, `parent`, `child`)
+) ENGINE=InnoDB ROW_FORMAT=COMPRESSED CHARACTER SET=utf8 COLLATE utf8_general_ci;
+```
+
+**持久化启动**
+
+```shell
+docker run -itd -p 19411:9411  -e STORAGE_TYPE=mysql -e MYSQL_HOST=mysql地址 -e MYSQL_TCP_PORT=3306 -e MYSQL_DB=zipkin -e MYSQL_USER=root -e MYSQL_PASS=XXXX --restart=always --name zipkin openzipkin/zipkin
+```
+
+**持久化启动并配置上rabbitmq**
+
+```shell
+docker run -itd -p 19411:9411 -e zipkin.collector.rabbitmq.addresses=Rabbitmq的IP地址 -e zipkin.collector.rabbitmq.username=guest -e zipkin.collector.rabbitmq.password=guest -e STORAGE_TYPE=mysql -e MYSQL_HOST=mysql地址 -e MYSQL_TCP_PORT=3306 -e MYSQL_DB=zipkin -e MYSQL_USER=root -e MYSQL_PASS=XXXX --restart=always --name zipkin openzipkin/zipkin
+```
+
+### 22.rocketmq安装
+
+#### 1）拉取rocketmq
+
+```shell
+docker pull rocketmqinc/rocketmq
+```
+
+#### 2)创建nameserver服务
+
+rocketmq在使用时需要先创建nameserver服务，用来对broker进行服务注册，rocketmq使用时需要先到nameserver里去获取broker信息再去访问broker节点
+
+##### a、创建namesrv数据存储路径
+
+```shell
+mkdir -p /data/rocketmq/data/nameserver/logs /data/rocketmq/data/nameserver/store
+```
+
+##### b、构建namesrv容器
+
+```shell
+docker run -d --restart=always --name gaorockermqnameserv -p 19876:9876 -e "JAVA_OPT_EXT=-server -Xms128m -Xmx128m -Xmn64m" -v /data/rocketmq/data/nameserver/logs:/root/logs -v /data/rocketmq/data/nameserver/store:/root/store -e "JAVA_OPTS=-Duser.home=/opt" -e “MAX_POSSIBLE_HEAP=100000000” rocketmqinc/rocketmq sh mqnamesrv
+```
+
+| 命令参数                                             | 说明                                                         |
+| ---------------------------------------------------- | ------------------------------------------------------------ |
+| -d                                                   | 以守护进程的方式启动                                         |
+| –restart=always                                      | docker重启时候镜像自动重启                                   |
+| –name rmqnamesrv                                     | 把容器的名字设置为rmqnamesrv                                 |
+| -p 19876:9876                                        | 把容器的非vip通道端口【9876】挂载到宿主机端口【19876】       |
+| -v /data/rocketmq/data/namesrv/logs:/root/logs       | 把容器内的/root/logs日志目录挂载到宿主机的 /data/rocketmq/data/namesrv/logs目录 |
+| -e “MAX_POSSIBLE_HEAP=100000000”                     | 设置容器的最大堆内存为100000000                              |
+| -e "JAVA_OPT_EXT=-server -Xms128m -Xmx128m -Xmn128m" | 设置java环境内存信息                                         |
+| -e "JAVA_OPTS=-Duser.home=/opt"                      | 设置JVM相关运行参数的变量                                    |
+| sh mqnamesrv                                         | 启动namesrv服务                                              |
+| rocketmqinc/rocketmq                                 | 使用的镜像名称                                               |
+#### 3)创建broker节点
+
+##### a、创建broker数据存储路径
+
+```shell
+mkdir -p /data/rocketmq/data/broker/logs /data/rocketmq/data/broker/store /data/rocketmq/conf
+```
+
+#### b、创建broker.conf配置文件
+
+```shell
+vi /data/rocketmq/conf/broker.conf
+# 所属集群名称，如果节点较多可以配置多个
+brokerClusterName = DefaultCluster
+#broker名称，master和slave使用相同的名称，表明他们的主从关系
+brokerName = broker-a
+#0表示Master，大于0表示不同的slave
+brokerId = 0
+#表示几点做消息删除动作，默认是凌晨4点
+deleteWhen = 04
+#在磁盘上保留消息的时长，单位是小时
+fileReservedTime = 48
+#有三个值：SYNC_MASTER，ASYNC_MASTER，SLAVE；同步和异步表示Master和Slave之间同步数据的机制；
+brokerRole = ASYNC_MASTER
+#刷盘策略，取值为：ASYNC_FLUSH，SYNC_FLUSH表示同步刷盘和异步刷盘；SYNC_FLUSH消息写入磁盘后才返回成功状态，ASYNC_FLUSH不需要；
+flushDiskType = ASYNC_FLUSH
+# 设置broker节点所在服务器的ip地址
+brokerIP1 = 106.55.197.195
+autoCreateTopicEnable = true
+```
+
+##### c、构建broker容器
+
+```shell
+docker run -d -p 10911:10911 -p 10909:10909 --restart=always --name gaormqbroker --link gaorockermqnameserv:namesrv  -v  /data/rocketmq/data/broker/logs:/root/logs -v  /data/rocketmq/data/broker/store:/root/store -v /data/rocketmq/conf/broker.conf:/opt/rocketmq-4.4.0/conf/broker.conf -e "JAVA_OPTS=-Duser.home=/opt" -e "JAVA_OPT_EXT=-server -Xms128m -Xmx128m" -e "NAMESRV_ADDR=10.0.20.16:19876"  -e "MAX_POSSIBLE_HEAP=200000000" rocketmqinc/rocketmq sh mqbroker -c /opt/rocketmq-4.4.0/conf/broker.conf
+```
+
+| 参数                                                | 说明                                                         |
+| --------------------------------------------------- | ------------------------------------------------------------ |
+| -d                                                  | 以守护进程的方式启动                                         |
+| - -name gaormqbroker                                | 把容器的名字设置为gaormqbroker                               |
+| - --link gaorockermqnameserv:namesrv                | 和gaorockermqnameserv容器通信                                |
+| -p 10911:10911                                      | 把容器的非vip通道端口挂载到宿主机                            |
+| -p 10909:10909                                      | 把容器的vip通道端口挂载到宿主机                              |
+| -e “NAMESRV_ADDR=namesrv:19876”                     | 指定namesrv的地址为本机namesrv的ip地址:19876                 |
+| -e “MAX_POSSIBLE_HEAP=200000000”                    | rocketmqinc/rocketmq sh mqbroker	指定broker服务的最大堆内存 |
+| sh mqbroker -c /opt/rocketmq-4.4.0/conf/broker.conf | 指定配置文件启动broker节点                                   |
+
+#### 4)创建rockermq-console服务
+
+##### a、拉取镜像
+
+```shell
+docker pull pangliang/rocketmq-console-ng
+```
+
+##### b、构建rockermq-console容器
+
+```shell
+docker run -d --restart=always --name gaormqadmin  -e "JAVA_OPTS=-Drocketmq.namesrv.addr=106.55.197.195:19876  -Dcom.rocketmq.sendMessageWithVIPChannel=false"  -p 9999:8080 pangliang/rocketmq-console-ng
+```
+
+| 命令参数                                               | 说明                                       |
+| ------------------------------------------------------ | ------------------------------------------ |
+| -d                                                     | 以守护进程的方式启动                       |
+| –restart=always                                        | docker重启时候镜像自动重启                 |
+| –name gaormqadmin                                      | 把容器的名字设置为gaormqadmin              |
+| -e "JAVA_OPTS=-Drocketmq.namesrv.addr=10.0.20.16:19876 | 设置namesrv服务的ip地址                    |
+| -Dcom.rocketmq.sendMessageWithVIPChannel=false"        | 不使用vip通道发送消息                      |
+| –p 9999:8080                                           | 把容器内的端口8080挂载到宿主机上的9999端口 |
+| http://106.55.197.195:9999                             | 后台管理地址                               |
+
+#### 

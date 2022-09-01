@@ -49,7 +49,25 @@ git remote add origin <你的项目地址> //注:项目地址形式为:https://g
 git push -u origin main
 ```
 
-# 二、更新git
+# 二、git key生成
+
+```  sh
+ssh-keygen -t rsa -C "youremail@example.com"
+#注意，上述youremail@example.com是指github账户的注册邮箱
+```
+
+key生成到默认地址windows是在C:\Users\gangy/.ssh/id_rsa，key生成后将key拷贝到github
+
+![image-20220817081817293](.\images\image-20220817081817293.png)
+
+```sh
+ssh -T git@github.com"
+#Hi you name! You've successfully authenticated, but GitHub does not provide shell access表示成功
+```
+
+配置结束后就可以直接使用git地址来进行数据同步了
+
+# 三、更新git
 
 ```git
 #对新增或修改文件进行跟踪，将一个文件添加进暂存区
@@ -62,7 +80,7 @@ git push origin master
 
 注意：提交命令有两个，git push origin master（正常提交）和git push origin master -f（强制提交，强制提交可能会把之前的commit注释信息更新，不会改变修改的代码，慎用），都是提交到master分支
 
-# 三、常用命令
+# 四、常用命令
 
 #### 1、克隆
 
@@ -379,6 +397,10 @@ git config --global --unset http.proxy
 git config --global --unset https.proxy 
 ```
 
-#### 20、其他命令
+#### 20、bug解决
+error: failed to push some refs to 'https://gitee.com/gaoguhao/wxmp-shop.git'
+我们要执行git pull --rebase origin master命令README.md拉到本地
+
+#### 21、其他命令
 
 ###### 可参考码云v1.2手册： http://git.mydoc.io/?t=180676

@@ -202,9 +202,14 @@ npm install --save-dev babel-cli	#将babel-cli安装到测试项目
 ```json
 {
     "presets":["es2015","stage-2"],	//设置转码规则
-    "plugins":["transform-runtime"]	//设置插件
+    "plugins":[
+        "transform-runtime",
+    	"transform-remove-strict-mode", //关闭严格模式的插件
+    ]	//设置插件
 }
 ```
+
+>  **使用babel进行es6转es5时，默认转化之后是严格模式，有些时候我们想去除严格模式,解决方法：npm install babel-plugin-transform-remove-strict-mode**
 
 #### 5.3相关插件安装
 
@@ -339,7 +344,7 @@ webpack --mode development
 #指定入口与编译文件路径
 webpack ./src/index.js -o ./build/index.js --mode development
 #生产环境
-webpack --model production
+webpack --mode production
 #指定入口与编译文件路径
 webpack ./src/index.js -o ./build/main.js --mode production
 ```
@@ -352,64 +357,288 @@ webpack ./src/index.js -o ./build/main.js --mode production
 
 `webpack.config.js`,编写webpack.json.js文件后后期编译就可以在命令行直接输入webpack使用。
 
+#### 7.2.1webpack优化需要用到的插件
+
+```shell
+#1、css-loader style-loader 安装 
+npm install --save-dev css-loader style-loader
+#2、css打包成单独文件
+npm install --save-dev mini-css-extract-plugin
+#3、css向下兼容插件，postcss-loader需要建postcss配置文件postcss.config.js
+npm i postcss-loader postcss postcss-preset-env -D
+#4、webpack5集成babel对js的es6语法做降级处理,在webpack.config.js里配置target:['web','es5'], 链接https://webpack.docschina.org/configuration/target/
+npm install babel-loader @babel/preset-env -D
+#5、less打包成css
+npm install less less-loader --save-dev 
+#6、sass打包成css
+npm install sass-loader sass webpack --save-dev
+#7、打包时过滤无用css文件插件
+npm i purgecss-webpack-plugin -D
+#8、eslint-loader检查js是否规范开发阶段不建议使用上线前对语法做统一处理
+npm i eslint-loader eslint eslint-config-airbnb-base eslint-plugin-import -D
+#9、打包html资源
+npm i html-webpack-plugin -D
+
+#4.2、 webpack4集成babel对js的es6语法做降级处理,需要降级处理的入口程序里引入corejs,import "core-js";
+npm install babel-loader @babel/preset-env @babel/plugin-proposal-class-properties @babel/plugin-transform-runtime  @babel/core @babel/runtime -D
+npm install core-js
+#10、webpack4对图片的打包
+npm install url-loader html-loader --save-dev
+#11、webpack4使用file-loader打包静态资源
+npm install file-loader --save-dev
+```
+
+#### 7.2.2webpack配置文件
+
 ```js
-const {resolve}=require('path');
+const {resolve,join}=require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const glob=require('glob');
+//join方法是path里面的path.join（[...path]）是使用分隔符将所有的字段连接起来，然后对路径规范化，例如path.join('a','b','\c')输出是a/b/c
+const PATHS={src:join(__dirname,'src')};
+//去除无用的css
+const PurgecssPlugin=require('purgecss-webpack-plugin');
+
+
 module.exports={
-    /*入口js*/
-    //单入口时使用字符串指定一个入口文件，打包一个chunk,输出一个bundle,chunk的名称是默认的
-    //entry:"./src/index.js",
-    /*
-    多入口
-    1、打包一个chunk,所有入口输出一个bundle,chunk的名称是默认的
-    */
-    /*
-    entry:[
-        "./src/index.js",
-        "./src/getUseDemo.js"
-    ],
-    */
-    //2、多入口有几个文件生成几个chuck,并输出几个bundle,chunk的名称是entry下的key名，如：index、useDemo
-   /*
-    entry: {
-       index: "./src/index.js",
-       useDemo: "./src/getUseDemo.js"
+    // 入口路径的配置,指示webpack以哪个文件作为入口起点开始打包
+    //入口文件如果是单个文件可以用字符串'./src/index.js'指定一个入口文件，打包一个chunk,输出一个bundle，chunk名为默认的main，
+    //如果是多个文件可以用数组引入['index.js','index.html']或者json格式{index:'index.js',}
+    entry:{
+        //我们想要从应用程序文件中输出 index 页面的 index.js 和 index.css，为 list 页面输出 list.js 和 list.css
+        //index页面只想调用index.js与index.css需要要HtmlWebpackPlugin内配置chunks:['index']
+        index:['./src/index.js','./src/index.css','./src/font/stylesheet.css','./src/index.html'],
+        list:['./src/list.js','./src/list.css']
     },
-    */
-    //3、特殊用法，有几个入口文件生成几个chuck，并输出几个bundle,此时会将"./src/index.js","./src/getUseDemo.js"打包到一个入口里，将"./src/getUseDemo.js"单独打包到一个入口
-    entry: {
-        index: ["./src/index.js","./src/getUseDemo.js"],
-        useDemo: "./src/getUseDemo.js"
-    },
-    /*
-    * webpack打包后输出路径
-    * filename:输出文件名,[name]通过name变量获取entry里配置的key名，如：index、useDemo
-    * path:输出路径
-    * resolve(__dirname,'build'):__dirname表示webpack.config.js文件所在的路径，'build'：新建目录的名字
-    * */
+    //输出,是json格式
     output:{
-        filename:"[name].js",
-        path:resolve(__dirname,'build')
+        //
+        filename: 'js/[name].js',
+        //打包后文件输出路径
+        path:resolve(__dirname,'gaogg')
     },
-    /**
-     * webpack处理的费js资源，如html、css、sass等
-     */
-    module:{
-        rules:[
+    //
+    module:{rules:[
+        //css-loader 安装 npm install --save-dev css-loader
+        //css打包成单独文件
+        //安装 npm install --save-dev mini-css-extract-plugin
 
-        ]
-    },
-    /*
-    * 插件
-    * */
+        //css向下兼容插件 npm i postcss-loader postcss postcss-preset-env -D
+        //postcss-loader需要建postcss配置文件postcss.config.js
+        
+         /*
+         postcss.config.js
+
+         module.exports={
+            plugins:[
+                require('postcss-preset-env')()
+            ]
+        }
+         */
+        //需要在package.json里配置浏览器兼容属性
+        /**
+         * 
+         * "browserslist":[
+                ">0.1%",    //全球超过0.1%人使用的浏览器
+                "last 2 versions",  //所有浏览器兼容到最后两个版本根据CanIUse.com追踪的版本
+                "not ie <=5"    //方向排除部分版本ie大于5
+
+            ],
+         */
+        {test:/\.css$/,use:[MiniCssExtractPlugin.loader,'css-loader','postcss-loader']},
+        {test:/\.sass$/,use:[MiniCssExtractPlugin.loader,'css-loader','sass-loader']},
+        {test:/\.less$/,use:[MiniCssExtractPlugin.loader,'css-loader','less-loader']},
+        //webpack集成babel对js的es6语法做降级处理
+        //npm install babel-loader @babel/core @babel/plugin-proposal-class-properties @babel/plugin-transform-runtime @babel/preset-env @babel/runtime -D
+        //npm install core-js
+        //如果webpack4是在需要降级处理的入口程序里引入corejs,import "core-js";如果是webpack5需要在webpack.config.js里配置target:['web','es5'], 链接https://webpack.docschina.org/configuration/target/
+        //babel插件使用需要在package.json同源目录下创建.babelrc文件
+        /*
+        .babelrc
+
+        {
+            "presets": [["@babel/preset-env",{
+                // "targets":{
+                //     "chrome":"58",
+                //     "ie":"7"
+                // },
+                "targets": {
+                    "edge": "17",
+                    "firefox": "60",
+                    "chrome": "58",
+                    "safari": "11.1",
+                    "ie": "6"
+                },
+                "useBuiltIns":"usage",   //usage 会根据配置的浏览器兼容，以及你代码中用到的 API 来进行 polyfill，实现了按需添加
+                "corejs": {
+                     //core-js的版本
+                    "version":3
+                }
+            }]
+            //, "@babel/preset-typescript" //对ts的支持插件
+        ],
+            "plugins": ["@babel/plugin-transform-runtime"]
+        }
+        */
+        {
+            test:/\.js$/i,
+            exclude:/(node_modules|bower_components)/,
+            use:[{
+                loader:'babel-loader',
+                // options:{
+                //     "presets": ['@babel/preset-env'],
+                // }
+            }]
+        },
+
+        //npm install --save-dev style-loader   css直接写入到页面不以单独文件存在
+        // {test:/.css$/,use:['style-loader','css-loader']}
+
+        // npm install less less-loader --save-dev less打包成css
+        // {test:/.less$/,use:[MiniCssExtractPlugin.loader,'css-loader','less-loader']}
+        //npm install sass-loader sass webpack --save-dev   sass打包成css
+        // {test:/.sass$/,use:[MiniCssExtractPlugin.loader,'css-loader','sass-loader']}
+
+        //图片压缩不推荐使用，推荐使用file-loader npm install url-loader --save-dev
+        //url-loader文件名不能改变，是以base64命名的
+        //url-loader与html-loader结合使用让css与html内图片能正常打包
+        /*
+        {
+            test:/\.(png|jpg|jpeg|gif)$/,
+            use:[
+                {
+                    loader:'url-loader',
+                    options:{
+                        //限制图片的大小，大于6kb的图我们进行图片压缩
+                        //limit:1024*6,
+                    }
+                }
+            ]
+            
+        },
+
+        // //使用html-loader对页面图片进行打包
+        {
+            test:/\.html$/,
+            loader:'html-loader'
+        },
+
+        //使用file-loader打包静态资源
+        {
+            test:/\.(png|jpg|jpeg|gif)$/,
+            use:[
+                {
+                    loader:'file-loader', 
+                    options:{
+                        name:'[name].[ext]',
+                        outputPath:'images/',
+                    }
+                }
+            ]
+        },
+        */
+
+        //webpack5之后版本图片等静态资源的内联都是通过Resource资源来实现
+        //https://webpack.docschina.org/guides/asset-modules/#resource-assets
+        {
+            test:/\.(png|jpg|jpeg|gif)$/i,
+            type:'asset/resource',
+            generator:{
+                filename:'images/[name][ext]'
+            }
+        },
+        //通过html-loader对页面内图片进行打包
+        {
+            test:/\.html$/,
+            loader:'html-loader'
+        },
+        //字体打包
+        {
+            test:/\.(woff|woff2|eot|ttf|otf)$/i,
+            type:'asset/resource',
+            generator:{
+                filename:'font/[name].[ext]'
+            }
+        },
+
+        //eslint-loader检查js是否规范开发阶段不建议使用上线前对语法做统一处理
+        //npm i eslint-loader eslint eslint-config-airbnb-base eslint-plugin-import -D
+        //eslint-loader的使用需要在package.json里配置'eslintConfig':{"extends":"airbnb-base"} //使用eslint-config-airbnb-base检索规则
+/*
+        {
+            test:/\.js$/i,
+            //排除node_modules模块下的js
+            exclude:/node_modules/,
+            use:[{
+                loader:'eslint-loader',
+                options:{
+                    //eslint自动修复语法错误
+                    //针对console.log可以配置//eslint-disable-next-line实现语法检查跳过
+                    fix:true,
+                }
+            }]
+        }
+*/        
+    ]},
+    //插件
     plugins:[
-
+        //html打包插件npm i --save-dev html-webpack-plugin
+        new HtmlWebpackPlugin(
+            {   
+                //打包html模板
+                template:"./src/index.html",
+                //z指定页面调用css及js的文件名，如果不配置默认是all
+                chunks:['index'],
+                //输出html文件名 
+                filename:"page/index.html"
+            }
+        ),
+        new HtmlWebpackPlugin(
+            {   
+                //打包html模板
+                template:"./src/list.html",
+                chunks:['list'],
+                //输出html文件名 
+                filename:"page/list.html"
+            }
+        ),
+        //打包成单独css文件插件
+        new MiniCssExtractPlugin({
+            filename:'css/[name].css'
+        }),
+        //打包时过滤无用css文件插件npm i purgecss-webpack-plugin -D
+        new PurgecssPlugin({
+            //${PATHS.src}获取定义的json变量里的信息，${PATHS.src}/**/*标识这个文件夹下的目录及其子目录的全部内容
+            paths:glob.sync(`${PATHS.src}/**/*`,{nodir:true})
+        })
     ],
-    /*
-    * 打包模式：development开发这模式，production生产模式
-    * */
-    mode:"development"
+
+    //安装webpack server，安装命令，并在package.json里的scripts内配置上启动命令"dev": "npx webpack serve --mode development --open"
+    
+    // webpack5之后版本需要加上target:'web'来实现浏览器自动刷新
+    //webpack5解决es6编译成es5语法需要在target里加上es5
+    target:['web','es5'],
+    //webpack server属性配置,webpack5默认热加载是开启的，页面要热刷新需要在入口文件里将html文件加入活着将hot改为false就是关闭热刷新
+    devServer:{
+        compress:true,  //页面使用压缩 
+        //hotOnly:true,  //页面构建失败刷新页面
+        hot:true
+    }
+    // 配置webpack的启动环境，'production'为正式环境，'development'为开发环境;
+
+    //webpack会自动去除无用的js代码，必须是es6语法的js代码同时必须是生产环境打编译webpack --mode production
+
+    //还可以通过webpack --mode 'production'通过启动配置项来配置，启动配置项可以配置到package.json里"build": "webpack --mode production"后期通过npm命令来执行 npm run build
+    //mode:'production'
 }
 ```
+
+![image-20220224105925437](.\images\image-20220224105925437.png)
+
+![image-20220224180134642](.\images\image-20220224180134642.png)
+
+![image-20220224110104891](.\images\image-20220224110104891.png)
 
 ![image-20210506222704860](.\images\image-20210506222704860.png)
 
@@ -479,11 +708,11 @@ TestPrototype.prototype.methodC=function(){
 var objb =new TestPrototype();
 ```
 
-![image-20220831143841449](.\images\image-20220831143841449.png)
+![image-20220831143841449](E:\WorkPath\gitWord\mine\stduyMaterial\images\image-20220831143841449.png)
 
 可以看出，该实例对象有3个属性，其中并没有methodB与methodC,这就是方法在构造函数内声明和在原型上声明的区别之一，我们展开Prototype(__proto__),发现methodB与methodC在里面。
 
-![image-20220831144709426](.\images\image-20220831144709426.png)
+![image-20220831144709426](E:\WorkPath\gitWord\mine\stduyMaterial\images\image-20220831144709426.png)
 
 Object.prototype的**proto**属性是一个访问器属性（一个getter函数和一个setter函数），它公开访问它的对象的内部[[Prototype]]（对象或null）。
 **proto**的使用是有争议的，尽量不要使用。 它从来没有被包括在EcmaScript语言规范中，但是现代浏览器实现了它。**proto**属性已在ECMAScript 6语言规范中标准化，用于确保Web浏览器的兼容性，因此它未来将被支持。它不赞成使用Object.getPrototypeOf / Reflect.getPrototypeOf和Object.setPrototypeOf / Reflect.setPrototypeOf（如果关注性能的话，应该避免设置对象的[[Prototype]]这样缓慢的操作）。
@@ -496,11 +725,11 @@ Object.prototype的**proto**属性是一个访问器属性（一个getter函数�
 var objB = new TestPrototype();
 ```
 
-![img](.\images\v2-10302df5d95ec56227c66c4cef6a3acf_720w.jpg)
+![img](E:\WorkPath\gitWord\mine\stduyMaterial\images\v2-10302df5d95ec56227c66c4cef6a3acf_720w.jpg)
 
 和objA是不是长得一样，其实他们并不是相等的
 
-![img](.\images\v2-fea70de08420e2fd15e76054ccf3cd05_720w.jpg)
+![img](E:\WorkPath\gitWord\mine\stduyMaterial\images\v2-fea70de08420e2fd15e76054ccf3cd05_720w.jpg)
 
 可以发现，methodA返回的是false，methodB是true。
 
@@ -556,7 +785,7 @@ arguments属性里面会接受到new方法创建时传入的所有参数数组�
 
 执行后alert(typeof arguments);会显示object，说明arguments是对象。然后会依次打出1、2、3。说明arguments就是调用函数的实参数组。
 
-![image-20220831151336948](.\images\image-20220831151336948.png)
+![image-20220831151336948](E:\WorkPath\gitWord\mine\stduyMaterial\images\image-20220831151336948.png)
 
 ```js
 var Class = {
@@ -866,7 +1095,6 @@ Person.toVal()  // TypeError Person.toVal is not a function
 #### 10.6实例方法
 
 ```js
-
 class Person {
     constructor() {
         this.sum = function(a, b) {

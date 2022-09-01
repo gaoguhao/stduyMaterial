@@ -15,3 +15,5 @@ springboot启动引导类及application.yml文件创建插件：JBLSpringBootApp
 mybatis插件Free Mybatis plugin
 
 Mybatis-Plus插件
+
+chianese(simplified) Language Pack
