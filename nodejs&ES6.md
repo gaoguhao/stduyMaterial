@@ -509,7 +509,7 @@ var objB = new TestPrototype();
 从上面的例子可以看出，这种重复性的方法就可以写在原型中，当你的构造函数有相当多的方法，并且实例化也非常多时，提升是非常大的。
 在前端入门时必须掌握的一个框架就是jQuery，其实你每次调用$(“…”)时，都会返回一个实例化的新的jQuery对象出来（内部帮你执行了new方法，关于jQuery初始化这一段也是jQuery的精髓之一，实现的相当巧妙，有兴趣可以去看看），这样做既没有使实例对象私有属性相互影响（如上面的propA），又能共用方法（如上面的methodB）。
 
-## JavaScript 是基于原型的语言
+#### JavaScript 是基于原型的语言
 
 想想我们是怎么创建新对象的：`var obj = {}`其实最终是通过`var obj = new Object()`创建的。是不是和上面的例子很像：通过new 构造函数 生成一个对象。
 当我们创建一个对象后，就可以通过“点”方法名的方式调用一些并不是我们手写的方法了，如`obj.toString()`
@@ -519,9 +519,7 @@ var objB = new TestPrototype();
 其实我们调用的是Object.prototype.toString。现在是不是对 *JavaScript 是基于原型的语言*这句话有些理解了。
 其实不止Object是这样的，Array、String、Number等都是这样的原理。
 
-## ”JavaScript一切皆对象“
-
-
+#### ”JavaScript一切皆对象“
 
 ![img](https://pic2.zhimg.com/80/v2-e716ee5bd912a94863c03d045fa29c19_720w.jpg)
 
@@ -714,3 +712,170 @@ sudo ln -s /home/nodejs/bin/nrm /usr/local/bin/
 ```
 
 其中/home/nodejs/bin/nrm/是指你本地安装nodejs包的路径，/use/local/bin/路径是你的程序命令执行路径，相当与windows的环境变量PATH路径，配置后可以在系统的任意位置执行你的命令。
+
+### 10、class类
+
+Es6中calss作为对象的模板被引入，可以通过对class关键字定义类。它可以被看作一个语法糖，让对象原型的写法更加清晰、更像面向对象编程的语法。
+
+实际上就是个“特殊函数”就像你能够定义的函数[表达式](https://so.csdn.net/so/search?q=表达式&spm=1001.2101.3001.7020)和函数声明一样，类语法有两个组成部分：类表达式和类声明
+
+**类与模块的内部默认就是严格模式，不需要使用use strict指定运行模式**
+
+#### 10.1类声明
+
+定义一个类的一种方法是使用一个类声明，即用带有class关键字的类名（这里是"Person"），
+
+```js
+class Person{
+    constructor(x,y){
+        this.x=x
+        this.y=y
+    }
+}
+var person = new Person()
+```
+
+**函数声明和类声明之间的一个重要区别是函数声明会提升，类声明不会。需要先进行声明，再去访问否则会报错。**
+
+**错误：**
+
+```js
+var person = new Person()
+class Person{
+    constructor(x,y){
+        this.x=x
+        this.y=y
+    }
+}
+// 报错：
+// index.html:10 Uncaught ReferenceError: Cannot access 'Person' before initialization
+```
+
+> 类声明不可以重复
+
+```js
+class Person {}
+class Person {}
+// TypeError Identifier 'Person' has already been declared
+```
+
+> 类必须使用 new 调用，否则会报错。这是它跟普通构造函数的一个主要区别，就是后者不用 new 也可以执行
+
+```js
+class Person {
+	constructor(x, y) {
+    this.x = x
+    this.y = y
+  }
+}
+
+Person() 
+// TypeError Class constructor Person cannot be invoked without 'new'
+```
+
+#### 10.2类表达式
+
+**类表达式可以是被命名的或匿名的**
+
+```js
+/* 匿名类 */ 
+let Person = class {
+  constructor(x, y) {
+    this.x = x
+    this.y = y
+  }
+}
+ 
+/* 命名的类 */ 
+let Person = class Person {
+  constructor(x, y) {
+    this.x = x
+    this.y = y
+  }
+}
+```
+
+#### 10.3类的constructor 方法
+
+**constructor 方法是类的默认方法，通过 new 命令生成对象实例时，自动调用该方法（默认返回实例对象 this）。一个类必须有 constructor 方法，如果没有显式定义，一个空的 constructor 方法会被默认添加。一个类只能拥有一个名为 “constructor” 的特殊方法，如果类包含多个 constructor 的方法，则将抛出 一个 SyntaxError 。**
+
+```js
+class Person {
+   constructor(x, y) {
+    this.x = x    // 默认返回实例对象 this
+    this.y = y
+  }
+  toString() {
+    console.log(this.x + ', ' + this.y)
+  }
+}
+```
+
+**注：**
+
+>1. 在类中声明方法的时候，方法前不加 function 关键字
+>2. 方法之间不要用逗号分隔，否则会报错
+>3. 类的内部所有定义的方法，都是不可枚举的（non-enumerable）
+>4. 一个类中只能拥有一个 constructor 方法
+
+#### 10.4静态方法
+
+> **静态方法可以通过类名调用，不能通过实例对象调用，否则会报错**
+
+```js
+class Person{
+    static sum(a , b){
+        console.log(a + b)
+    }
+}
+let person = new Person()
+person.sum(1,2) //  TypeError p.sum is not a function
+Person.sum(1,2)  // 3
+```
+
+#### 10.5原型方法
+
+> **类的所有方法都定义在类的 prototype 属性上面，在类的实例上面调用方法，其实就是调用原型上的方法**
+
+> **原型方法可以通过实例对象调用，但不能通过类名调用，会报错**
+
+```js
+class Person{
+    constructor(x , y){
+        this.x = x
+        this.y = y
+    }
+    sum(){
+        this.x + this.y
+    }
+    toString() {
+        console.log(this.x + ',' + this.y)
+    }
+}
+//给person的原型加方法
+Person.prototype.toVal = function(){
+    console.log("i am is toVal")
+}
+var p =new Person(1,2)
+p.toString()       // 123456
+p.toVal()          // I am is toVal
+Person.toString()  // TypeError Person.toStringis not a function
+Person.toVal()  // TypeError Person.toVal is not a function
+```
+
+#### 10.6实例方法
+
+```js
+
+class Person {
+    constructor() {
+        this.sum = function(a, b) {
+            console.log(a + b)
+        }
+    }
+}
+var p = new Person()
+p.sum(1,2)       // 3
+Person.sum(1,2)  // TypeError Person.sum is not a function
+```
+
