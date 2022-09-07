@@ -909,8 +909,16 @@ npm install -g taobao --registry=https://registry.npmmirror.com/
  cnpm --------- https://r.cnpmjs.org/
  taobao ------- https://registry.npmmirror.com/
  npmMirror ---- https://skimdb.npmjs.com/registry/
- 21cn --------- https://npm.tech.21cn.com/
+ 21cn --------- http://npm.tech.21cn.com/
 ```
+
+**21cn内部源需要使用nrm来安装**
+
+```shell
+nrm add 21cn http://npm.tech.21cn.com
+```
+
+![image-20220906174508921](D:\bakPath\git\github\stduyMaterial\image-20220906174508921.png)
 
 #### 9.2使用nrm查看及切换镜像源
 
