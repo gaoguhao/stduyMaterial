@@ -243,6 +243,14 @@ git rm –r *
 git status
 ```
 
+> git 配置信息查看
+
+```shell
+git config --global
+# 或者
+git config --global --list
+```
+
 #### 8、将文件添加到缓存区
 
 ```git
